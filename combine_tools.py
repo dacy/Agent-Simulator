@@ -14,6 +14,71 @@ def write_file_content(file_path: str, content: str) -> None:
     with open(file_path, 'w', encoding='utf-8') as f:
         f.write(content)
 
+def load_mock_data(mock_data_dir: str = "mock-data") -> Dict[str, Any]:
+    """Load all mock data files from the mock-data directory."""
+    mock_data = {}
+    
+    if not os.path.exists(mock_data_dir):
+        print(f"Warning: Mock data directory '{mock_data_dir}' not found. Using empty data.")
+        return mock_data
+    
+    # Load customers data
+    customers_file = os.path.join(mock_data_dir, "customers.json")
+    if os.path.exists(customers_file):
+        try:
+            with open(customers_file, 'r', encoding='utf-8') as f:
+                mock_data['customers'] = json.load(f)
+            print(f"  - Loaded {len(mock_data['customers'])} customers from {customers_file}")
+        except Exception as e:
+            print(f"Warning: Could not load customers data: {e}")
+            mock_data['customers'] = []
+    
+    # Load documents data
+    documents_file = os.path.join(mock_data_dir, "documents.json")
+    if os.path.exists(documents_file):
+        try:
+            with open(documents_file, 'r', encoding='utf-8') as f:
+                mock_data['documents'] = json.load(f)
+            print(f"  - Loaded {len(mock_data['documents'])} documents from {documents_file}")
+        except Exception as e:
+            print(f"Warning: Could not load documents data: {e}")
+            mock_data['documents'] = []
+    
+    # Load requests data
+    requests_file = os.path.join(mock_data_dir, "requests.json")
+    if os.path.exists(requests_file):
+        try:
+            with open(requests_file, 'r', encoding='utf-8') as f:
+                mock_data['requests'] = json.load(f)
+            print(f"  - Loaded {len(mock_data['requests'])} requests from {requests_file}")
+        except Exception as e:
+            print(f"Warning: Could not load requests data: {e}")
+            mock_data['requests'] = []
+    
+    return mock_data
+
+def inject_mock_data_into_source(source_code: str, mock_data: Dict[str, Any]) -> str:
+    """Replace mock data placeholders in source code with actual data as valid Python code."""
+    modified_source = source_code
+    
+    # Replace placeholders with actual mock data as Python code (not JSON)
+    if '{{MOCK_CUSTOMERS_DATA}}' in modified_source:
+        customers_python = repr(mock_data.get('customers', []))
+        modified_source = modified_source.replace('"{{MOCK_CUSTOMERS_DATA}}"', customers_python)
+        print(f"    - Injected {len(mock_data.get('customers', []))} customers into source code")
+    
+    if '{{MOCK_DOCUMENTS_DATA}}' in modified_source:
+        documents_python = repr(mock_data.get('documents', []))
+        modified_source = modified_source.replace('"{{MOCK_DOCUMENTS_DATA}}"', documents_python)
+        print(f"    - Injected {len(mock_data.get('documents', []))} documents into source code")
+    
+    if '{{MOCK_REQUESTS_DATA}}' in modified_source:
+        requests_python = repr(mock_data.get('requests', []))
+        modified_source = modified_source.replace('"{{MOCK_REQUESTS_DATA}}"', requests_python)
+        print(f"    - Injected {len(mock_data.get('requests', []))} requests into source code")
+    
+    return modified_source
+
 def update_agent_format(agent: Dict[str, Any]) -> Dict[str, Any]:
     """Update agent to match the correct AutoGen Studio format."""
     config = agent.get("config", {})
@@ -90,6 +155,10 @@ def combine_and_prepare_tools(config_path: str, tools_dir: str, output_path: str
         print(f"Error: Tools directory not found at '{tools_dir}'")
         return
 
+    # Load mock data
+    print("Loading mock data...")
+    mock_data = load_mock_data()
+
     print(f"Scanning for tools in: {tools_dir}")
     tool_files = [f for f in os.listdir(tools_dir) if f.endswith('.py')]
 
@@ -103,36 +172,26 @@ def combine_and_prepare_tools(config_path: str, tools_dir: str, output_path: str
             print(f"Warning: Could not read tool file {tool_file_path}. Skipping. Error: {e}")
             continue
 
+        # Inject mock data into source code
+        print(f"  - Processing {tool_file}:")
+        source_code = inject_mock_data_into_source(source_code, mock_data)
+
         for agent in config_data.get('config', {}).get('participants', []):
             for tool in agent.get('config', {}).get('tools', []):
                 # We inject the same source into all functions in a file,
                 # as they rely on the same imports and context.
-                if tool_file.startswith(agent.get("label")):
+                # Match tool file name (without .py) to agent label
+                tool_name_clean = tool_file[:-3] if tool_file.endswith('.py') else tool_file
+                agent_label = agent.get("label", "")
+                
+                # Check if agent label starts with tool file name
+                if agent_label.startswith(tool_name_clean):
                     tool['config']['source_code'] = source_code
                     print(f"  - Injected source from '{tool_file}' into tool '{tool['config']['name']}' for agent '{agent['label']}'")
 
 
-    # --- Step 2: Build and inject the function_map into the User Proxy Agent ---
-    function_map = {}
-    for tool_file in tool_files:
-        module_name = os.path.splitext(tool_file)[0]
-        spec = importlib.util.spec_from_file_location(module_name, os.path.join(tools_dir, tool_file))
-        if spec and spec.loader:
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-            for func_name, func_obj in module.__dict__.items():
-                if callable(func_obj) and not func_name.startswith("__"):
-                    function_map[func_name] = f"<{func_name}>" # Placeholder for studio
-                    print(f"  - Mapped function '{func_name}'")
-
-    # Find UserProxyAgent and inject the function map
-    for agent in config_data.get('config', {}).get('participants', []):
-        if agent.get("label") == "UserProxyAgent":
-            if 'config' not in agent:
-                agent['config'] = {}
-            agent['config']['function_map'] = function_map
-            print(f"\nSuccessfully injected function map into UserProxyAgent.")
-            break
+    # --- Step 2: UserProxyAgent is for user input only, no function mapping needed ---
+    print("UserProxyAgent configured for user input collection (no function mapping required)")
 
     # --- Step 3: Write the final combined file ---
     print(f"Writing combined configuration to: {output_path}")
@@ -145,11 +204,8 @@ def combine_and_prepare_tools(config_path: str, tools_dir: str, output_path: str
                 return json.JSONEncoder.default(self, obj)
 
         with open(output_path, 'w', encoding='utf-8') as f:
-            # We use a trick to replace the placeholder strings with the unquoted function names
-            # This is a bit of a hack to make it compatible with Studio's expectations
+            # Write clean JSON without function_map hacks
             json_str = json.dumps(config_data, indent=2, cls=CustomEncoder)
-            for func_name in function_map:
-                 json_str = json_str.replace(f'"<{func_name}>"', func_name)
             f.write(json_str)
 
         print("Successfully created combined_orchestrator.json")
@@ -169,6 +225,10 @@ def combine_tools():
     # Read base configuration
     config = json.loads(read_file_content(config_file))
     
+    # Load mock data
+    print("Loading mock data...")
+    mock_data = load_mock_data()
+    
     print(f"Scanning for tools in: {tools_dir}")
     
     # Process each agent
@@ -185,13 +245,18 @@ def combine_tools():
             if filename.endswith('.py'):
                 clean_name = filename[:-3].replace(' ', '_').replace('-', '_')
                 agent_clean = label.replace(' ', '_').replace('-', '_')
-                if clean_name.lower() == agent_clean.lower():
+                # Check if agent label starts with tool file name (handles cases like "Request_Analysis" vs "Request_Analysis_Agent")
+                if agent_clean.lower().startswith(clean_name.lower()):
                     tool_file_path = os.path.join(tools_dir, filename)
                     break
         
         if tool_file_path and os.path.exists(tool_file_path):
             # Read tool source code
             tool_source = read_file_content(tool_file_path)
+            
+            # Inject mock data into source code
+            print(f"  - Processing {os.path.basename(tool_file_path)}:")
+            tool_source = inject_mock_data_into_source(tool_source, mock_data)
             
             # Update each tool in this agent
             for tool in agent["config"].get("tools", []):

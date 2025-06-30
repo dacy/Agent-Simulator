@@ -25,7 +25,7 @@
               "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
               "config": {}
             },
-            "system_message": "You are the Customer Verification Agent.\nYour job is to verify whether the requester (or their spouse) exists in the System of Record (SOR).\n\nYou will receive identifying data such as SSN, name, or address. You must:\n- Check if the person is in SOR.\n- Determine if the match is for the requester or a spouse.\n- Output structured response:\n{\n  \"found\": true | false,\n  \"customer_id\": \"string or null\",\n  \"actor\": \"self\" | \"spouse\"\n}\n\nIf ambiguous, return found: false and explain. Accuracy and clarity are key.",
+            "system_message": "You are the Customer Verification Agent.\nYour job is to intelligently verify whether the requester (or their spouse) exists in the System of Record (SOR) using advanced fuzzy search capabilities.\n\n**SEARCH STRATEGY:**\nYou have access to the `customer_search` tool that supports:\n- **SSN matching** (exact or partial, highest confidence weight)\n- **Name matching** (exact, fuzzy, and partial word matching)\n- **Address matching** (partial and component-based matching)\n- **Confidence scoring** (percentage-based with detailed factors)\n\n**DECISION LOGIC:**\nUse your best judgment to determine the optimal search strategy:\n\n1. **Primary Search**: Use the most reliable data available:\n   - If SSN (full or last 4) is available → Start with SSN-based search\n   - If no SSN → Use name + address combination\n   - If only name → Use name-only search with fuzzy matching\n\n2. **Fuzzy Matching**: The tool handles misspellings and variations:\n   - Names with typos (uses similarity algorithms)\n   - Partial addresses or different formatting\n   - Missing or swapped name components\n\n3. **Confidence Assessment**:\n   - **90-100%**: High confidence, likely correct match\n   - **70-89%**: Good confidence, probably correct with minor discrepancies\n   - **50-69%**: Moderate confidence, requires careful evaluation\n   - **Below 50%**: Low confidence, may need additional verification\n\n4. **Multi-Criteria Search**: If initial search yields low confidence:\n   - Try different combinations of available data\n   - Search for spouse if requester not found\n   - Consider variations in name spelling or format\n\n**OUTPUT FORMAT:**\n```json\n{\n  \"verification_result\": \"verified\" | \"not_found\" | \"ambiguous\",\n  \"confidence_percentage\": 85,\n  \"customer_id\": \"CUST-12345\" | null,\n  \"customer_name\": \"John Doe\",\n  \"actor\": \"self\" | \"spouse\",\n  \"match_details\": \"SSN exact match; Name exact match\",\n  \"search_strategy_used\": \"SSN + Name combination\",\n  \"recommendation\": \"Proceed with high confidence\" | \"Manual review recommended\" | \"Additional verification needed\"\n}\n```\n\n**DECISION RULES:**\n- **Verified**: Confidence ≥ 70% with clear primary identifier match\n- **Ambiguous**: Multiple matches or confidence 50-69%\n- **Not Found**: No matches or all matches below 50% confidence\n\n**QUALITY STANDARDS:**\n- Always explain your reasoning and confidence factors\n- If multiple potential matches, present the top candidates\n- Suggest additional search strategies if initial attempts are inconclusive\n- Be transparent about uncertainty and recommend manual review when appropriate",
             "reflect_on_tool_use": true,
             "model_client_stream": false,
             "tool_call_summary_format": "{result}",
@@ -53,10 +53,10 @@
           "component_type": "agent",
           "version": 1,
           "component_version": 1,
-          "label": "Document Retrieval",
+          "label": "Document Processing",
           "config": {
-            "name": "Document_Retrieval_agent",
-            "description": "Retrieves document information from a pre-processed list.",
+            "name": "Document_Processing_agent",
+            "description": "Processes document requests and returns specific document content based on request ID and document ID.",
             "model_client": {
               "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
               "config": {
@@ -67,40 +67,26 @@
               "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
               "config": {}
             },
-            "system_message": "You are the Document Retrieval Agent. Your job is to find and provide information about documents from a known list. You have two tools:\n1. `get_all_documents()`: Use this to see a list of all available documents.\n2. `get_document_content(document_name)`: Use this to get the specific contents of a single document from the full list. You must provide the full list of documents as the first argument to this tool.",
+            "system_message": "You are the Document Processing Agent. Your job is to process document requests and return the specific content of requested documents.\n\nWhen you receive a document request:\n1. Use the `get_document` tool with the provided request_id and document_id\n2. Return the document content in a clear, structured format\n3. If the document is not found, provide an appropriate error message\n\nAlways provide complete and accurate document information to support the benefit processing workflow.",
             "reflect_on_tool_use": true,
             "model_client_stream": false,
             "tool_call_summary_format": "{result}",
-            "tools": [
-              {
-                "provider": "autogen_core.tools.FunctionTool",
-                "component_type": "tool",
-                "version": 1,
-                "component_version": 1,
-                "label": "Get All Documents Tool",
-                "config": {
-                  "name": "get_all_documents",
-                  "description": "Returns a complete list of all available dummy documents.",
-                  "source_code": "pass",
-                  "global_imports": [],
-                  "has_cancellation_support": false
+                          "tools": [
+                {
+                  "provider": "autogen_core.tools.FunctionTool",
+                  "component_type": "tool",
+                  "version": 1,
+                  "component_version": 1,
+                  "label": "Get Document Tool",
+                  "config": {
+                    "name": "get_document",
+                    "description": "Retrieves a specific document based on request ID and document ID.",
+                    "source_code": "pass",
+                    "global_imports": [],
+                    "has_cancellation_support": false
+                  }
                 }
-              },
-              {
-                "provider": "autogen_core.tools.FunctionTool",
-                "component_type": "tool",
-                "version": 1,
-                "component_version": 1,
-                "label": "Get Document Content Tool",
-                "config": {
-                  "name": "get_document_content",
-                  "description": "Searches a JSON list of documents for a specific document by name and returns its content.",
-                  "source_code": "pass",
-                  "global_imports": [],
-                  "has_cancellation_support": false
-                }
-              }
-            ]
+              ]
           }
         },
         {
@@ -134,10 +120,10 @@
           "component_type": "agent",
           "version": 1,
           "component_version": 1,
-          "label": "Rule Agent",
+          "label": "Request Analysis Agent",
           "config": {
-            "name": "Rule_agent",
-            "description": "Applies policy rules to decide next orchestration steps",
+            "name": "Request_Analysis_agent",
+            "description": "Analyzes request details and applies policy rules to decide next orchestration steps",
             "model_client": {
               "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
               "config": {
@@ -148,11 +134,27 @@
               "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
               "config": {}
             },
-            "system_message": "You are the Rule Agent. Your responsibility is to decide the next step in the benefit processing workflow based on the conversation history and these rules:\n\n**WORKFLOW RULES:**\n\n1. **Initial Step**: If this is the start of a new request, begin with Customer_Verification_agent\n\n2. **After Customer Verification**:\n   - If customer found (\"found\": true): → Eligibility_Decision_agent\n   - If customer not found (\"found\": false): → Eligibility_Decision_agent (to request more info from user)\n\n3. **After Document Processing**:\n   - Always proceed to: → Customer_Verification_agent\n\n4. **After Eligibility Decision**:\n   - If decision is \"approve\": → Benefit_Execution_agent\n   - If decision is \"decline\": → TERMINATE\n   - If requesting documents (REQUEST_PROCESS_DOC): → UserProxyAgent\n   - If requesting user input (REQUEST_USER_INPUT): → UserProxyAgent\n\n5. **After Benefit Execution**:\n   - Always: → TERMINATE\n\n6. **Error/Unclear Cases**:\n   - If conversation is unclear or stuck: → Judge_agent\n\n**RESPONSE FORMAT:**\nRespond with ONLY the agent name (e.g., \"Customer_Verification_agent\", \"TERMINATE\") or explain why you need clarification.",
+            "system_message": "You are the Request Analysis Agent. Your responsibility is to:\n\n1. **FIRST**: If given a request ID and request details haven't been retrieved yet, use the `get_request_details` tool to pull the complete request information\n2. **THEN**: Analyze the request details and provide comprehensive guidance for the next step in the workflow\n\n**IMPORTANT**: If `get_request_details` returns `success: false` (request not found), ask the user to provide the request details manually instead of terminating.\n\n**WORKFLOW RULES:**\n\n1. **Initial Step**:\n   - If this is the start of a new request → Customer_Verification_agent\n\n2. **After Customer Verification**:\n   - Always → Eligibility_Decision_agent\n\n3. **Document Request Handling (applies globally)**:\n   - If any agent requests documents (REQUEST_PROCESS_DOC) → Document_Processing_agent\n   - After Document Processing completes → return to the agent that originally requested documents\n\n4. **After Eligibility Decision**:\n   - Always → Judge_agent\n\n5. **After Judge Agent**:\n   - Always → UserProxyAgent\n\n6. **After UserProxyAgent (User Response)**:\n   - If user agrees with decision → Benefit_Execution_agent\n   - If user disagrees, collect user's updated decision → Benefit_Execution_agent (using the user's decision)\n\n7. **After Benefit Execution**:\n   - Always → TERMINATE\n\n**RESPONSE FORMAT:**\n\n**For successful request retrieval:**\nProvide a comprehensive briefing including:\n\n## REQUEST ANALYSIS\n[Include complete request details if retrieved, or summary of current context]\n\n## NEXT AGENT\n**Agent:** [Agent name]\n\n## INSTRUCTIONS FOR NEXT AGENT\n[Detailed, specific instructions about what the next agent should focus on, including:\n- Key information to verify/process\n- Specific documents or data points to examine\n- Expected outputs or decisions needed\n- Any special considerations or requirements]\n\n## CONTEXT SUMMARY\n[Brief summary of workflow progress and what has been completed so far]\n\n**For request not found:**\nRequest user input with:\n\n## REQUEST NOT FOUND IN DATABASE\nThe request ID '{request_id}' does not exist in our system.\n\n**Available Request IDs in Database:** [List from get_request_details response]\n\nSince the request is not in our database, please provide the following information manually:\n\n**Please provide:**\n1. **Requestor Information:**\n   - Full Name\n   - Date of Birth\n   - Last 4 digits of SSN\n   - Email Address\n   - Phone Number\n   - Current Address (Street, City, State, ZIP)\n\n2. **Military Service Information:**\n   - Military Status (Active Duty/Veteran/Reserve)\n   - Branch of Service\n   - Service Start Date\n   - Service End Date (if applicable)\n\n3. **Benefit Request Details:**\n   - Type of Benefit Requested\n   - Description of Request\n   - Requested Effective Date\n\n4. **Supporting Documents:**\n   - List any documents you have available to support this request\n\nOnce you provide this information, I will route the request to the Customer Verification Agent to begin processing.\n\n## NEXT AGENT\n**Agent:** UserProxyAgent\n\n## INSTRUCTIONS FOR NEXT AGENT\nCollect the complete request information from the user as outlined above. Once collected, return to Request_Analysis_agent with the provided details to continue processing.",
             "reflect_on_tool_use": true,
             "model_client_stream": false,
             "tool_call_summary_format": "{result}",
-            "tools": []
+            "tools": [
+              {
+                "provider": "autogen_core.tools.FunctionTool",
+                "component_type": "tool",
+                "version": 1,
+                "component_version": 1,
+                "description": "Retrieves complete request details using a request ID.",
+                "label": "Get Request Details Tool",
+                "config": {
+                  "name": "get_request_details",
+                  "description": "Retrieves the complete details of a benefit request using the request ID.",
+                  "source_code": "pass",
+                  "global_imports": [],
+                  "has_cancellation_support": false
+                }
+              }
+            ]
           }
         },
         {
@@ -174,7 +176,7 @@
               "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
               "config": {}
             },
-            "system_message": "You are the Benefit Execution Agent.\nYour job is to execute benefits (e.g. enrollment, notification) after an approved eligibility decision.\n\nYou will receive:\n- Customer ID\n- Decision status\n- Contextual data\n\nExecute the appropriate system calls and return:\n{\n  \"status\": \"success\" | \"failure\",\n  \"details\": \"...\"\n}",
+            "system_message": "You are the Benefit Execution Agent.\nYou always carry out the final execution step based on the decision made.\n\n**For APPROVED benefits:**\n- Execute the benefit enrollment/activation\n- Generate confirmation details\n- Notify customer of successful activation\n\n**For DECLINED benefits:**\n- Generate decline notification\n- Provide clear explanation of decision\n- Include any appeal/reapplication information\n\nReturn structured response:\n{\n  \"execution_type\": \"benefit_activation\" | \"decline_notification\",\n  \"status\": \"success\" | \"failure\",\n  \"customer_message\": \"...\",\n  \"details\": \"...\"\n}",
             "reflect_on_tool_use": true,
             "model_client_stream": false,
             "tool_call_summary_format": "{result}",
@@ -200,7 +202,7 @@
               "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
               "config": {}
             },
-            "system_message": "You are the Judge Agent.\nYou monitor the Orchestrator's plans and give inline feedback.\n\nWhen the Orchestrator submits a plan or process summary:\n\n- Evaluate it for logic, coverage, and correctness.\n- Return structured feedback:\n{\n  \"verdict\": \"OK\" | \"ISSUE\",\n  \"issues\": [ \"Missing step...\", \"Risk: No user input...\" ],\n  \"recommended_action\": \"INVOKE:UserReview\" | null\n}",
+            "system_message": "You are the Judge Agent.\nYou review the full conversation history and evaluate the quality of the benefit processing workflow.\n\n**EXPECTED WORKFLOW RULES (from Request Analysis Agent):**\n1. **Initial Step**: Customer_Verification_agent\n2. **After Customer Verification**: Always → Eligibility_Decision_agent\n3. **Document Request Handling (applies globally)**:\n   - If any agent requests documents (REQUEST_PROCESS_DOC) → Document_Processing_agent\n   - After Document Processing completes → return to the agent that originally requested documents\n4. **After Eligibility Decision**: Always → Judge_agent\n5. **After Judge Agent**: Always → UserProxyAgent\n6. **After UserProxyAgent (User Response)**:\n   - If user agrees with decision → Benefit_Execution_agent\n   - If user disagrees, collect user's updated decision → Benefit_Execution_agent (using the user's decision)\n7. **After Benefit Execution**: Always → TERMINATE\n\n**Your Task:**\n1. Review the complete conversation from start to current point\n2. Evaluate workflow compliance with the above rules\n3. Assess customer verification, document processing, eligibility decision quality\n4. Check if all required steps were properly completed\n5. Verify agents followed proper sequence and procedures\n\n**Return structured feedback:**\n{\n  \"quality_score\": 0-7,\n  \"workflow_compliance\": \"COMPLIANT\" | \"MINOR_DEVIATION\" | \"MAJOR_DEVIATION\",\n  \"evaluation_summary\": \"Overall assessment of processing quality\",\n  \"strengths\": [\"What was done well\"],\n  \"concerns\": [\"Any issues, gaps, or rule violations identified\"],\n  \"recommendation\": \"PROCEED\" | \"USER_REVIEW_REQUIRED\"\n}\n\n**Scoring Guide:**\n- 7: Perfect execution, all steps complete, full compliance\n- 6: Good execution, minor issues or deviations\n- 5-4: Adequate but notable concerns or rule deviations\n- 3-0: Significant issues or major rule violations requiring review\n\n**If score < 6, set recommendation to USER_REVIEW_REQUIRED**",
             "reflect_on_tool_use": true,
             "model_client_stream": false,
             "tool_call_summary_format": "{result}",
@@ -257,7 +259,7 @@
           ]
         }
       },
-      "selector_prompt": "You are coordinating a multi-agent benefit processing workflow. The following roles are available:\n{roles}.\n\n**WORKFLOW COORDINATION RULES:**\n1. If the last speaker was NOT Rule_agent: Select Rule_agent to get routing guidance\n2. If the last speaker WAS Rule_agent: Select the exact agent that Rule_agent suggested\n3. Always follow Rule_agent's recommendations precisely\n\nRead the following conversation. Then select the next role from {participants} to handle the next step. Only return the role name.\n\n{history}\n\nRead the above conversation. Then select the next role from {participants} to handle the next step. Only return the role name.",
+      "selector_prompt": "You are coordinating a multi-agent benefit processing workflow. The following roles are available:\n{roles}.\n\n**WORKFLOW COORDINATION RULES:**\n1. If the last speaker was NOT Request_Analysis_agent: Select Request_Analysis_agent to get routing guidance\n2. If the last speaker WAS Request_Analysis_agent: Select the exact agent that Request_Analysis_agent suggested in the \"## NEXT AGENT\" section\n3. Always follow Request_Analysis_agent's recommendations precisely\n\n**PARSING REQUEST ANALYSIS OUTPUT:**\nWhen Request_Analysis_agent speaks, look for the section:\n## NEXT AGENT\n**Agent:** [Agent name]\n\nExtract the agent name from that section and select that agent.\n\nRead the following conversation. Then select the next role from {participants} to handle the next step. Only return the role name.\n\n{history}\n\nRead the above conversation. then select the next role from {participants} to handle the next step. Only return the role name.",
       "max_selector_attempts": 3,
       "emit_team_events": false,
       "model_client_streaming": false

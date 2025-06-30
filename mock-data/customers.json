@@ -1,0 +1,92 @@
+[
+  {
+    "customerId": "CUST-001",
+    "fullName": "Ashlee Thompson",
+    "dateOfBirth": "1983-01-21",
+    "ssnLast4": "7583",
+    "email": "kayla59@matthews.biz",
+    "phone": "824.057.7423x6297",
+    "address": {
+      "street": "5896 Daniel Fort",
+      "city": "Joshuahaven",
+      "state": "AZ",
+      "zip": "94396"
+    },
+    "militaryStatus": "Veteran",
+    "branch": "Coast Guard",
+    "serviceStartDate": "2020-01-01",
+    "serviceEndDate": null
+  },
+  {
+    "customerId": "CUST-002",
+    "fullName": "Rachel Glover",
+    "dateOfBirth": "1994-09-19",
+    "ssnLast4": "8365",
+    "email": "mendozanicholas@yahoo.com",
+    "phone": "824.447.7428x7274",
+    "address": {
+      "street": "3595 Elizabeth Passage",
+      "city": "South Mariaton",
+      "state": "OH",
+      "zip": "59096"
+    },
+    "militaryStatus": "Reserve",
+    "branch": "Army",
+    "serviceStartDate": "2018-10-09",
+    "serviceEndDate": null
+  },
+  {
+    "customerId": "CUST-003",
+    "fullName": "Heather Mason",
+    "dateOfBirth": "1998-05-15",
+    "ssnLast4": "4674",
+    "email": "stephen16@gmail.com",
+    "phone": "079-991-8795",
+    "address": {
+      "street": "38232 Joseph Fords",
+      "city": "Lake Todd",
+      "state": "AZ",
+      "zip": "58315"
+    },
+    "militaryStatus": "Active Duty",
+    "branch": "Army",
+    "serviceStartDate": "2020-05-17",
+    "serviceEndDate": null
+  },
+  {
+    "customerId": "CUST-004",
+    "fullName": "Corey Lucas",
+    "dateOfBirth": "1993-01-11",
+    "ssnLast4": "5829",
+    "email": "wilsonlisa@williams.info",
+    "phone": "+1-589-467-8480x428",
+    "address": {
+      "street": "5266 Shaw Locks",
+      "city": "East Melissamouth",
+      "state": "MO",
+      "zip": "35641"
+    },
+    "militaryStatus": "Reserve",
+    "branch": "Army",
+    "serviceStartDate": "2015-03-03",
+    "serviceEndDate": null
+  },
+  {
+    "customerId": "CUST-005",
+    "fullName": "Kristopher Phillips",
+    "dateOfBirth": "1988-03-04",
+    "ssnLast4": "7025",
+    "email": "kellywagner@travis.com",
+    "phone": "001-161-483-3768x76063",
+    "address": {
+      "street": "8009 Snyder Radial",
+      "city": "East Christyville",
+      "state": "KY",
+      "zip": "48228"
+    },
+    "militaryStatus": "Active Duty",
+    "branch": "Marines",
+    "serviceStartDate": "2014-07-31",
+    "serviceEndDate": null
+  }
+]
