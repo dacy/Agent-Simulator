@@ -36,7 +36,7 @@
             "label": "UnboundedChatCompletionContext"
           },
           "system_message": "You are the Customer Verification Agent.\nYour job is to verify whether the requester (or their spouse) exists in the System of Record (SOR).\n\nYou will receive identifying data such as SSN, name, or address. You must:\n- Check if the person is in SOR.\n- Determine if the match is for the requester or a spouse.\n- Output structured response:\n{\n  \"found\": true | false,\n  \"customer_id\": \"string or null\",\n  \"actor\": \"self\" | \"spouse\"\n}\n\nIf ambiguous, return found: false and explain. Accuracy and clarity are key.",
-          "reflect_on_tool_use": false,
+          "reflect_on_tool_use": true,
           "model_client_stream": false,
           "tool_call_summary_format": "{result}",
           "tools": [
@@ -90,7 +90,7 @@
             "label": "UnboundedChatCompletionContext"
           },
           "system_message": "You are the Document Retrieval Agent. Your job is to find and provide information about documents from a known list. You have two tools:\n1. `get_all_documents()`: Use this to see a list of all available documents.\n2. `get_document_content(document_name)`: Use this to get the specific contents of a single document from the full list. You must provide the full list of documents as the first argument to this tool.",
-          "reflect_on_tool_use": false,
+          "reflect_on_tool_use": true,
           "model_client_stream": false,
           "tool_call_summary_format": "{result}",
           "tools": [
@@ -159,7 +159,7 @@
             "label": "UnboundedChatCompletionContext"
           },
           "system_message": "Based on verified identity and extracted document information, determine whether the customer qualifies for the requested benefit.\n\nYou may receive incomplete input. If so:\nAsk for documents using:\n{ \"action\": \"REQUEST_PROCESS_DOC\", \"docs\": [...] }\n\nAsk for user input using:\n{ \"action\": \"REQUEST_USER_INPUT\", \"message\": \"...\" }\n\nWhen ready to make a decision:\n{\n  \"action\": \"DECISION\",\n  \"decision\": \"approve\" | \"decline\",\n  \"justification\": \"...\"\n}\n\nDo not invoke follow-up steps \u2014 the Orchestrator will handle those.",
-          "reflect_on_tool_use": false,
+          "reflect_on_tool_use": true,
           "model_client_stream": false,
           "tool_call_summary_format": "{result}",
           "tools": [],
@@ -196,27 +196,11 @@
             "description": "An unbounded chat completion context that keeps a view of the all the messages.",
             "label": "UnboundedChatCompletionContext"
           },
-          "system_message": "You are the Rule Agent. Your sole responsibility is to decide the next step in the workflow. You will be given the conversation history. You MUST use the `suggest_next_step` tool to analyze the history and determine the next agent to invoke. Output ONLY the name of the agent suggested by the tool.",
-          "reflect_on_tool_use": false,
+          "system_message": "You are the Rule Agent. Your responsibility is to decide the next step in the benefit processing workflow based on the conversation history and these rules:\n\n**WORKFLOW RULES:**\n\n1. **Initial Step**: If this is the start of a new request, begin with Customer_Verification_agent\n\n2. **After Customer Verification**:\n   - If customer found (\"found\": true): \u2192 Eligibility_Decision_agent\n   - If customer not found (\"found\": false): \u2192 Eligibility_Decision_agent (to request more info from user)\n\n3. **After Document Processing**:\n   - Always proceed to: \u2192 Customer_Verification_agent\n\n4. **After Eligibility Decision**:\n   - If decision is \"approve\": \u2192 Benefit_Execution_agent\n   - If decision is \"decline\": \u2192 TERMINATE\n   - If requesting documents (REQUEST_PROCESS_DOC): \u2192 UserProxyAgent\n   - If requesting user input (REQUEST_USER_INPUT): \u2192 UserProxyAgent\n\n5. **After Benefit Execution**:\n   - Always: \u2192 TERMINATE\n\n6. **Error/Unclear Cases**:\n   - If conversation is unclear or stuck: \u2192 Judge_agent\n\n**RESPONSE FORMAT:**\nRespond with ONLY the agent name (e.g., \"Customer_Verification_agent\", \"TERMINATE\") or explain why you need clarification.",
+          "reflect_on_tool_use": true,
           "model_client_stream": false,
           "tool_call_summary_format": "{result}",
-          "tools": [
-            {
-              "provider": "autogen_core.tools.FunctionTool",
-              "component_type": "tool",
-              "version": 1,
-              "component_version": 1,
-              "label": "Suggest Next Step Tool",
-              "config": {
-                "name": "suggest_next_step",
-                "description": "Analyzes the conversation history JSON to suggest the next agent. The full conversation history must be passed to this tool as a JSON string.",
-                "source_code": "import json\nfrom typing import List, Dict, Any\n\ndef suggest_next_step(conversation_history_json: str) -> str:\n    \"\"\"\n    Analyzes the conversation history and suggests the next agent to invoke.\n    This tool provides routing logic for the orchestrator.\n\n    Args:\n        conversation_history_json: A JSON string representing the list of messages.\n\n    Returns:\n        The name of the next agent to be invoked (e.g., \"UserProxyAgent\", \"Benefit_Execution_agent\").\n    \"\"\"\n    try:\n        # It's safer for agents to pass complex data as JSON strings\n        conversation_history: List[Dict[str, Any]] = json.loads(conversation_history_json)\n        if not conversation_history:\n            # This case should ideally not be hit if the orchestrator calls this correctly\n            return \"Customer_Verification_agent\"\n    except (json.JSONDecodeError, TypeError):\n        # If history is not valid JSON or empty, start from the beginning.\n        return \"Customer_Verification_agent\"\n\n    # The conversation history includes the orchestrator's prompts, so we look at the last agent's actual response\n    last_agent_message = None\n    for msg in reversed(conversation_history):\n        if msg.get(\"name\") and msg.get(\"name\") != \"Orchestrator Agent\":\n            last_agent_message = msg\n            break\n    \n    if not last_agent_message:\n        # If no agent has spoken yet, it's the beginning of the workflow.\n        # Check if documents are mentioned in the first user message\n        initial_user_message = conversation_history[0].get(\"content\", \"\")\n        if \"document\" in initial_user_message.lower() or \"file\" in initial_user_message.lower() or \"attached\" in initial_user_message.lower():\n             return \"Document_Processing_agent\"\n        else:\n             return \"Customer_Verification_agent\"\n\n    last_message_content = last_agent_message.get(\"content\", \"\")\n    last_message_name = last_agent_message.get(\"name\", \"\")\n\n    # Rule 1: After document processing, verify customer\n    if last_message_name == \"Document_Processing_agent\":\n        return \"Customer_Verification_agent\"\n\n    # Rule 2: Handle customer verification failure\n    if last_message_name == \"Customer_Verification_agent\" and '\"found\": false' in last_message_content:\n        return \"Eligibility_Decision_agent\" # To ask the user for more info\n\n    # Rule 3: After successful verification, decide eligibility\n    if last_message_name == \"Customer_Verification_agent\" and '\"found\": true' in last_message_content:\n        return \"Eligibility_Decision_agent\"\n\n    # Rule 4: If eligibility agent needs docs, go to user\n    if last_message_name == \"Eligibility_Decision_agent\" and \"REQUEST_PROCESS_DOC\" in last_message_content:\n        return \"UserProxyAgent\"\n\n    # Rule 5: After a decision is made, execute it\n    if last_message_name == \"Eligibility_Decision_agent\" and '\"decision\": \"approve\"' in last_message_content:\n        return \"Benefit_Execution_agent\"\n\n    # Rule 6: After execution, or if declined, we are done\n    if last_message_name == \"Benefit_Execution_agent\" or ('\"decision\": \"decline\"' in last_message_content):\n        return \"TERMINATE\"\n        \n    # Fallback: if confused, ask the Judge agent for a recommendation\n    return \"Judge_agent\" ",
-                "global_imports": [],
-                "has_cancellation_support": false
-              },
-              "description": "Create custom tools by wrapping standard Python functions."
-            }
-          ],
+          "tools": [],
           "metadata": {}
         },
         "description": "Applies policy rules to decide next orchestration steps"
@@ -251,7 +235,7 @@
             "label": "UnboundedChatCompletionContext"
           },
           "system_message": "You are the Benefit Execution Agent.\nYour job is to execute benefits (e.g. enrollment, notification) after an approved eligibility decision.\n\nYou will receive:\n- Customer ID\n- Decision status\n- Contextual data\n\nExecute the appropriate system calls and return:\n{\n  \"status\": \"success\" | \"failure\",\n  \"details\": \"...\"\n}",
-          "reflect_on_tool_use": false,
+          "reflect_on_tool_use": true,
           "model_client_stream": false,
           "tool_call_summary_format": "{result}",
           "tools": [],
@@ -289,7 +273,7 @@
             "label": "UnboundedChatCompletionContext"
           },
           "system_message": "You are the Judge Agent.\nYou monitor the Orchestrator's plans and give inline feedback.\n\nWhen the Orchestrator submits a plan or process summary:\n\n- Evaluate it for logic, coverage, and correctness.\n- Return structured feedback:\n{\n  \"verdict\": \"OK\" | \"ISSUE\",\n  \"issues\": [ \"Missing step...\", \"Risk: No user input...\" ],\n  \"recommended_action\": \"INVOKE:UserReview\" | null\n}",
-          "reflect_on_tool_use": false,
+          "reflect_on_tool_use": true,
           "model_client_stream": false,
           "tool_call_summary_format": "{result}",
           "tools": [],
@@ -352,7 +336,7 @@
         ]
       }
     },
-    "selector_prompt": "You are the Orchestrator Agent.\nYour job is to coordinate a multi-agent team to process a benefit request.\nAt each step, you must consult the `Rule_agent` to determine which agent to invoke next. Follow the `Rule_agent`'s suggestion precisely. Do not make your own decisions about the workflow.",
+    "selector_prompt": "You are coordinating a multi-agent benefit processing workflow. The following roles are available:\n{roles}.\n\n**WORKFLOW COORDINATION RULES:**\n1. If the last speaker was NOT Rule_agent: Select Rule_agent to get routing guidance\n2. If the last speaker WAS Rule_agent: Select the exact agent that Rule_agent suggested\n3. Always follow Rule_agent's recommendations precisely\n\nRead the following conversation. Then select the next role from {participants} to handle the next step. Only return the role name.\n\n{history}\n\nRead the above conversation. Then select the next role from {participants} to handle the next step. Only return the role name.",
     "max_selector_attempts": 3,
     "emit_team_events": false,
     "model_client_streaming": false
