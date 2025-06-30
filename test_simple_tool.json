@@ -1,0 +1,54 @@
+{
+  "provider": "autogen_agentchat.agents.AssistantAgent",
+  "component_type": "agent",
+  "version": 1,
+  "component_version": 1,
+  "description": "An agent that provides assistance with tool use.",
+  "label": "Test Agent",
+  "config": {
+    "name": "test_agent",
+    "model_client": {
+      "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+      "component_type": "model",
+      "version": 1,
+      "component_version": 1,
+      "description": "Chat completion client for OpenAI hosted models.",
+      "label": "OpenAIChatCompletionClient",
+      "config": {
+        "model": "gpt-4o-mini"
+      }
+    },
+    "model_context": {
+      "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+      "component_type": "chat_completion_context",
+      "version": 1,
+      "component_version": 1,
+      "description": "An unbounded chat completion context that keeps a view of the all the messages.",
+      "label": "UnboundedChatCompletionContext",
+      "config": {}
+    },
+    "description": "A simple test agent with a basic tool.",
+    "system_message": "You are a helpful assistant. Solve tasks carefully. When done, say TERMINATE.",
+    "model_client_stream": false,
+    "reflect_on_tool_use": false,
+    "tool_call_summary_format": "{result}",
+    "metadata": {},
+    "tools": [
+      {
+        "provider": "autogen_core.tools.FunctionTool",
+        "component_type": "tool",
+        "version": 1,
+        "component_version": 1,
+        "description": "Create custom tools by wrapping standard Python functions.",
+        "label": "Simple Test Tool",
+        "config": {
+          "source_code": "def simple_function():\n    return 'Hello World'",
+          "name": "simple_function",
+          "description": "A simple test function that returns hello world",
+          "global_imports": [],
+          "has_cancellation_support": false
+        }
+      }
+    ]
+  }
+} 

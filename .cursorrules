@@ -1,0 +1,60 @@
+# Instructions
+
+During you interaction with the user, if you find anything reusable in this project (e.g. version of a library, model name), especially about a fix to a mistake you made or a correction you received, you should take note in the `Lessons` section in the `.cursorrules` file so you will not make the same mistake again. 
+
+You should also use the `.cursorrules` file as a scratchpad to organize your thoughts. Especially when you receive a new task, you should first review the content of the scratchpad, clear old different task if necessary, first explain the task, and plan the steps you need to take to complete the task. You can use todo markers to indicate the progress, e.g.
+[X] Task 1
+[ ] Task 2
+Also update the progress of the task in the Scratchpad when you finish a subtask.
+Especially when you finished a milestone, it will help to improve your depth of task accomplishment to use the scratchpad to reflect and plan.
+The goal is to help you maintain a big picture as well as the progress of the task. Always refer to the Scratchpad when you plan the next step.
+
+
+
+# Lessons
+
+## User Specified Lessons
+
+- You have a python venv in ./py310.
+- Include info useful for debugging in the program output.
+- Read the file before you try to edit it.
+- Use LLM to perform flexible text understanding tasks. First test on a few files. After success, make it parallel.
+
+## Cursor learned
+
+- For website image paths, always use the correct relative path (e.g., 'images/filename.png') and ensure the images directory exists
+- For search results, ensure proper handling of different character encodings (UTF-8) for international queries
+- Add debug information to stderr while keeping the main output clean in stdout for better pipeline integration
+- When using seaborn styles in matplotlib, use 'seaborn-v0_8' instead of 'seaborn' as the style name due to recent seaborn version changes
+- AutoGen Studio FunctionTool configurations require exact JSON structure matching the Studio-generated format, including specific required fields like model_client_stream, reflect_on_tool_use, tool_call_summary_format, metadata, and proper component descriptions
+
+# Scratchpad
+
+## Current Task: AutoGen Studio FunctionTool Compilation Error
+
+### Problem Investigation
+[X] Tested complex multi-agent configuration with FunctionTool - failed with "list index out of range"
+[X] Simplified to basic function separations and AST parsing - still failed
+[X] Created minimal test configuration with single function - still failed
+[X] Searched for similar issues online
+[X] Identified correct AutoGen Studio JSON format from user example
+[X] Fixed function name mismatch (search_customer_in_sor -> customer_search)
+[X] Updated configuration to match exact AutoGen Studio format
+
+### Key Findings
+- Error was due to incorrect JSON structure not matching AutoGen Studio's expected format
+- Required fields: model_client_stream, reflect_on_tool_use, tool_call_summary_format, metadata
+- Function names in tool files must exactly match tool configuration names
+- All tools need proper "description" field set to "Create custom tools by wrapping standard Python functions."
+
+### Current Status
+The combined_orchestrator.json now has the correct format that matches AutoGen Studio's requirements:
+- Proper model_client structure with component_type, version, description, label
+- Proper model_context structure 
+- All required agent configuration fields
+- Correct tool descriptions and source code injection
+
+### Next Steps
+[X] Try corrected JSON structure based on working examples
+[ ] Test the corrected configuration in AutoGen Studio
+[ ] If still fails, investigate further or consider Python API approach

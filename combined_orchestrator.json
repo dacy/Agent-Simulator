@@ -1,0 +1,360 @@
+{
+  "provider": "autogen_agentchat.teams.SelectorGroupChat",
+  "component_type": "team",
+  "version": 1,
+  "component_version": 1,
+  "label": "Benefit Orchestrator",
+  "config": {
+    "participants": [
+      {
+        "provider": "autogen_agentchat.agents.AssistantAgent",
+        "component_type": "agent",
+        "version": 1,
+        "component_version": 1,
+        "label": "Customer Verification",
+        "config": {
+          "name": "Customer_Verification_agent",
+          "description": "Looks up requester or spouse in SOR",
+          "model_client": {
+            "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+            "config": {
+              "model": "gpt-4o-mini"
+            },
+            "component_type": "model",
+            "version": 1,
+            "component_version": 1,
+            "description": "Chat completion client for OpenAI hosted models.",
+            "label": "OpenAIChatCompletionClient"
+          },
+          "model_context": {
+            "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+            "config": {},
+            "component_type": "chat_completion_context",
+            "version": 1,
+            "component_version": 1,
+            "description": "An unbounded chat completion context that keeps a view of the all the messages.",
+            "label": "UnboundedChatCompletionContext"
+          },
+          "system_message": "You are the Customer Verification Agent.\nYour job is to verify whether the requester (or their spouse) exists in the System of Record (SOR).\n\nYou will receive identifying data such as SSN, name, or address. You must:\n- Check if the person is in SOR.\n- Determine if the match is for the requester or a spouse.\n- Output structured response:\n{\n  \"found\": true | false,\n  \"customer_id\": \"string or null\",\n  \"actor\": \"self\" | \"spouse\"\n}\n\nIf ambiguous, return found: false and explain. Accuracy and clarity are key.",
+          "reflect_on_tool_use": false,
+          "model_client_stream": false,
+          "tool_call_summary_format": "{result}",
+          "tools": [
+            {
+              "provider": "autogen_core.tools.FunctionTool",
+              "component_type": "tool",
+              "version": 1,
+              "component_version": 1,
+              "description": "Searches for a customer in the System of Record.",
+              "label": "Customer Search Tool",
+              "config": {
+                "name": "customer_search",
+                "description": "Looks up a customer based on identifying information.",
+                "source_code": "import json\n\ndef customer_search(ssn: str, name: str, address: str) -> str:\n    \"\"\"Searches for customers in a dummy list of customers using their SSN, name, or address and returns all matches.\n\n    Args:\n        ssn (str): The customer's Social Security Number.\n        name (str): The customer's full name.\n        address (str): The customer's address.\n\n    Returns:\n        str: A JSON string representing a list of matched customer objects. Returns an empty list '[]' if no matches are found.\"\"\"\n    dummy_customers = [\n        {\"ssn\": \"123-45-678\", \"name\": \"John Smith\", \"address\": \"123 Fake St, Anytown, USA\"},\n        {\"ssn\": \"987-65-432\", \"name\": \"Alice Wonderland\", \"address\": \"456 Rabbit Hole, Fantasyland\"},\n        {\"ssn\": \"111-22-333\", \"name\": \"Bob Builder\", \"address\": \"789 Construction Zone\"}\n    ]\n\n    matched_customers = []\n    for customer in dummy_customers:\n        if customer[\"ssn\"] == ssn or customer[\"name\"].lower() == name.lower() or customer[\"address\"].lower() == address.lower():\n            matched_customers.append(customer)\n\n    return json.dumps(matched_customers) ",
+                "global_imports": [],
+                "has_cancellation_support": false
+              }
+            }
+          ],
+          "metadata": {}
+        },
+        "description": "Looks up requester or spouse in SOR"
+      },
+      {
+        "provider": "autogen_agentchat.agents.AssistantAgent",
+        "component_type": "agent",
+        "version": 1,
+        "component_version": 1,
+        "label": "Document Retrieval",
+        "config": {
+          "name": "Document_Retrieval_agent",
+          "description": "Retrieves document information from a pre-processed list.",
+          "model_client": {
+            "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+            "config": {
+              "model": "gpt-4o-mini"
+            },
+            "component_type": "model",
+            "version": 1,
+            "component_version": 1,
+            "description": "Chat completion client for OpenAI hosted models.",
+            "label": "OpenAIChatCompletionClient"
+          },
+          "model_context": {
+            "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+            "config": {},
+            "component_type": "chat_completion_context",
+            "version": 1,
+            "component_version": 1,
+            "description": "An unbounded chat completion context that keeps a view of the all the messages.",
+            "label": "UnboundedChatCompletionContext"
+          },
+          "system_message": "You are the Document Retrieval Agent. Your job is to find and provide information about documents from a known list. You have two tools:\n1. `get_all_documents()`: Use this to see a list of all available documents.\n2. `get_document_content(document_name)`: Use this to get the specific contents of a single document from the full list. You must provide the full list of documents as the first argument to this tool.",
+          "reflect_on_tool_use": false,
+          "model_client_stream": false,
+          "tool_call_summary_format": "{result}",
+          "tools": [
+            {
+              "provider": "autogen_core.tools.FunctionTool",
+              "component_type": "tool",
+              "version": 1,
+              "component_version": 1,
+              "label": "Get All Documents Tool",
+              "config": {
+                "name": "get_all_documents",
+                "description": "Returns a complete list of all available dummy documents.",
+                "source_code": "import json\n\ndef get_all_documents() -> str:\n    \"\"\"\n    Returns a complete list of all available dummy documents for SCRA benefit verification.\n\n    Returns:\n        str: A JSON string representing the full list of dummy document records.\n    \"\"\"\n    dummy_documents = [\n        {\n            \"name\": \"lease_agreement.pdf\",\n            \"extracted_content\": {\n                \"type\": \"Lease Agreement\",\n                \"address\": \"123 Patriot Way, Freedom City, USA\",\n                \"tenant\": \"John M. Servicemember\",\n                \"lease_start_date\": \"2023-01-15\",\n                \"monthly_rent\": 2500.00\n            }\n        },\n        {\n            \"name\": \"drivers_license.jpg\",\n            \"extracted_content\": {\n                \"type\": \"Driver's License\",\n                \"name\": \"John M. Servicemember\",\n                \"dob\": \"1990-05-20\",\n                \"address\": \"123 Patriot Way, Freedom City, USA\",\n                \"license_number\": \"D12345678\"\n            }\n        },\n        {\n            \"name\": \"military_orders.pdf\",\n            \"extracted_content\": {\n                \"type\": \"Military Orders\",\n                \"name\": \"John M. Servicemember\",\n                \"rank\": \"Sergeant (E-5)\",\n                \"branch\": \"U.S. Army\",\n                \"orders_type\": \"Permanent Change of Station (PCS)\",\n                \"report_date\": \"2022-08-01\",\n                \"station\": \"Fort Liberty, NC\"\n            }\n        },\n        {\n            \"name\": \"dmdc_status_report.pdf\",\n            \"extracted_content\": {\n                \"type\": \"DMDC SCRA Status Report\",\n                \"name\": \"John M. Servicemember\",\n                \"ssn_last_4\": \"5678\",\n                \"status_verified\": True,\n                \"active_duty_start_date\": \"2022-08-01\",\n                \"active_duty_end_date\": None,\n                \"verification_date\": \"2024-06-30\"\n            }\n        },\n        {\n            \"name\": \"bank_statement_mar2024.pdf\",\n            \"extracted_content\": {\n                \"type\": \"Bank Statement\",\n                \"account_holder\": \"John M. Servicemember\",\n                \"account_number\": \"xxxx-xxxx-1234\",\n                \"statement_period\": \"2024-03-01 to 2024-03-31\",\n                \"payments_to_landlord\": [\n                    {\"date\": \"2024-03-01\", \"amount\": 2500.00}\n                ]\n            }\n        }\n    ]\n    return json.dumps(dummy_documents) \n\n\ndef get_document_content(documents_json: str, document_name: str) -> str:\n    \"\"\"\n    Searches for a document within a given JSON list and returns its extracted content.\n\n    This tool simulates retrieving structured data from a specific document\n    from a list of documents provided to it.\n\n    Args:\n        documents_json (str): A JSON string representing a list of document objects.\n        document_name (str): The filename of the document to retrieve. \n                             e.g., \"lease_agreement.pdf\", \"military_orders.pdf\"\n\n    Returns:\n        A JSON string of the extracted document content if found.\n             Otherwise, a JSON string with an error message.\n    \"\"\"\n    try:\n        documents = json.loads(documents_json)\n        if not isinstance(documents, list):\n            raise TypeError(\"Input is not a list of documents.\")\n    except (json.JSONDecodeError, TypeError) as e:\n        return json.dumps({\"error\": f\"Invalid format for documents_json: {e}\"})\n\n    for doc in documents:\n        if isinstance(doc, dict) and doc.get('name', '').lower() == document_name.lower():\n            return json.dumps(doc.get('extracted_content', {}))\n            \n    return json.dumps({\"error\": f\"Document '{document_name}' not found in the provided list.\"}) ",
+                "global_imports": [],
+                "has_cancellation_support": false
+              },
+              "description": "Create custom tools by wrapping standard Python functions."
+            },
+            {
+              "provider": "autogen_core.tools.FunctionTool",
+              "component_type": "tool",
+              "version": 1,
+              "component_version": 1,
+              "label": "Get Document Content Tool",
+              "config": {
+                "name": "get_document_content",
+                "description": "Searches a JSON list of documents for a specific document by name and returns its content.",
+                "source_code": "import json\n\ndef get_all_documents() -> str:\n    \"\"\"\n    Returns a complete list of all available dummy documents for SCRA benefit verification.\n\n    Returns:\n        str: A JSON string representing the full list of dummy document records.\n    \"\"\"\n    dummy_documents = [\n        {\n            \"name\": \"lease_agreement.pdf\",\n            \"extracted_content\": {\n                \"type\": \"Lease Agreement\",\n                \"address\": \"123 Patriot Way, Freedom City, USA\",\n                \"tenant\": \"John M. Servicemember\",\n                \"lease_start_date\": \"2023-01-15\",\n                \"monthly_rent\": 2500.00\n            }\n        },\n        {\n            \"name\": \"drivers_license.jpg\",\n            \"extracted_content\": {\n                \"type\": \"Driver's License\",\n                \"name\": \"John M. Servicemember\",\n                \"dob\": \"1990-05-20\",\n                \"address\": \"123 Patriot Way, Freedom City, USA\",\n                \"license_number\": \"D12345678\"\n            }\n        },\n        {\n            \"name\": \"military_orders.pdf\",\n            \"extracted_content\": {\n                \"type\": \"Military Orders\",\n                \"name\": \"John M. Servicemember\",\n                \"rank\": \"Sergeant (E-5)\",\n                \"branch\": \"U.S. Army\",\n                \"orders_type\": \"Permanent Change of Station (PCS)\",\n                \"report_date\": \"2022-08-01\",\n                \"station\": \"Fort Liberty, NC\"\n            }\n        },\n        {\n            \"name\": \"dmdc_status_report.pdf\",\n            \"extracted_content\": {\n                \"type\": \"DMDC SCRA Status Report\",\n                \"name\": \"John M. Servicemember\",\n                \"ssn_last_4\": \"5678\",\n                \"status_verified\": True,\n                \"active_duty_start_date\": \"2022-08-01\",\n                \"active_duty_end_date\": None,\n                \"verification_date\": \"2024-06-30\"\n            }\n        },\n        {\n            \"name\": \"bank_statement_mar2024.pdf\",\n            \"extracted_content\": {\n                \"type\": \"Bank Statement\",\n                \"account_holder\": \"John M. Servicemember\",\n                \"account_number\": \"xxxx-xxxx-1234\",\n                \"statement_period\": \"2024-03-01 to 2024-03-31\",\n                \"payments_to_landlord\": [\n                    {\"date\": \"2024-03-01\", \"amount\": 2500.00}\n                ]\n            }\n        }\n    ]\n    return json.dumps(dummy_documents) \n\n\ndef get_document_content(documents_json: str, document_name: str) -> str:\n    \"\"\"\n    Searches for a document within a given JSON list and returns its extracted content.\n\n    This tool simulates retrieving structured data from a specific document\n    from a list of documents provided to it.\n\n    Args:\n        documents_json (str): A JSON string representing a list of document objects.\n        document_name (str): The filename of the document to retrieve. \n                             e.g., \"lease_agreement.pdf\", \"military_orders.pdf\"\n\n    Returns:\n        A JSON string of the extracted document content if found.\n             Otherwise, a JSON string with an error message.\n    \"\"\"\n    try:\n        documents = json.loads(documents_json)\n        if not isinstance(documents, list):\n            raise TypeError(\"Input is not a list of documents.\")\n    except (json.JSONDecodeError, TypeError) as e:\n        return json.dumps({\"error\": f\"Invalid format for documents_json: {e}\"})\n\n    for doc in documents:\n        if isinstance(doc, dict) and doc.get('name', '').lower() == document_name.lower():\n            return json.dumps(doc.get('extracted_content', {}))\n            \n    return json.dumps({\"error\": f\"Document '{document_name}' not found in the provided list.\"}) ",
+                "global_imports": [],
+                "has_cancellation_support": false
+              },
+              "description": "Create custom tools by wrapping standard Python functions."
+            }
+          ],
+          "metadata": {}
+        },
+        "description": "Retrieves document information from a pre-processed list."
+      },
+      {
+        "provider": "autogen_agentchat.agents.AssistantAgent",
+        "component_type": "agent",
+        "version": 1,
+        "component_version": 1,
+        "label": "Eligibility Decision",
+        "config": {
+          "name": "Eligibility_Decision_agent",
+          "description": "Determines eligibility based on verified context and docs",
+          "model_client": {
+            "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+            "config": {
+              "model": "gpt-4o-mini"
+            },
+            "component_type": "model",
+            "version": 1,
+            "component_version": 1,
+            "description": "Chat completion client for OpenAI hosted models.",
+            "label": "OpenAIChatCompletionClient"
+          },
+          "model_context": {
+            "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+            "config": {},
+            "component_type": "chat_completion_context",
+            "version": 1,
+            "component_version": 1,
+            "description": "An unbounded chat completion context that keeps a view of the all the messages.",
+            "label": "UnboundedChatCompletionContext"
+          },
+          "system_message": "Based on verified identity and extracted document information, determine whether the customer qualifies for the requested benefit.\n\nYou may receive incomplete input. If so:\nAsk for documents using:\n{ \"action\": \"REQUEST_PROCESS_DOC\", \"docs\": [...] }\n\nAsk for user input using:\n{ \"action\": \"REQUEST_USER_INPUT\", \"message\": \"...\" }\n\nWhen ready to make a decision:\n{\n  \"action\": \"DECISION\",\n  \"decision\": \"approve\" | \"decline\",\n  \"justification\": \"...\"\n}\n\nDo not invoke follow-up steps \u2014 the Orchestrator will handle those.",
+          "reflect_on_tool_use": false,
+          "model_client_stream": false,
+          "tool_call_summary_format": "{result}",
+          "tools": [],
+          "metadata": {}
+        },
+        "description": "Determines eligibility based on verified context and docs"
+      },
+      {
+        "provider": "autogen_agentchat.agents.AssistantAgent",
+        "component_type": "agent",
+        "version": 1,
+        "component_version": 1,
+        "label": "Rule Agent",
+        "config": {
+          "name": "Rule_agent",
+          "description": "Applies policy rules to decide next orchestration steps",
+          "model_client": {
+            "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+            "config": {
+              "model": "gpt-4o-mini"
+            },
+            "component_type": "model",
+            "version": 1,
+            "component_version": 1,
+            "description": "Chat completion client for OpenAI hosted models.",
+            "label": "OpenAIChatCompletionClient"
+          },
+          "model_context": {
+            "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+            "config": {},
+            "component_type": "chat_completion_context",
+            "version": 1,
+            "component_version": 1,
+            "description": "An unbounded chat completion context that keeps a view of the all the messages.",
+            "label": "UnboundedChatCompletionContext"
+          },
+          "system_message": "You are the Rule Agent. Your sole responsibility is to decide the next step in the workflow. You will be given the conversation history. You MUST use the `suggest_next_step` tool to analyze the history and determine the next agent to invoke. Output ONLY the name of the agent suggested by the tool.",
+          "reflect_on_tool_use": false,
+          "model_client_stream": false,
+          "tool_call_summary_format": "{result}",
+          "tools": [
+            {
+              "provider": "autogen_core.tools.FunctionTool",
+              "component_type": "tool",
+              "version": 1,
+              "component_version": 1,
+              "label": "Suggest Next Step Tool",
+              "config": {
+                "name": "suggest_next_step",
+                "description": "Analyzes the conversation history JSON to suggest the next agent. The full conversation history must be passed to this tool as a JSON string.",
+                "source_code": "import json\nfrom typing import List, Dict, Any\n\ndef suggest_next_step(conversation_history_json: str) -> str:\n    \"\"\"\n    Analyzes the conversation history and suggests the next agent to invoke.\n    This tool provides routing logic for the orchestrator.\n\n    Args:\n        conversation_history_json: A JSON string representing the list of messages.\n\n    Returns:\n        The name of the next agent to be invoked (e.g., \"UserProxyAgent\", \"Benefit_Execution_agent\").\n    \"\"\"\n    try:\n        # It's safer for agents to pass complex data as JSON strings\n        conversation_history: List[Dict[str, Any]] = json.loads(conversation_history_json)\n        if not conversation_history:\n            # This case should ideally not be hit if the orchestrator calls this correctly\n            return \"Customer_Verification_agent\"\n    except (json.JSONDecodeError, TypeError):\n        # If history is not valid JSON or empty, start from the beginning.\n        return \"Customer_Verification_agent\"\n\n    # The conversation history includes the orchestrator's prompts, so we look at the last agent's actual response\n    last_agent_message = None\n    for msg in reversed(conversation_history):\n        if msg.get(\"name\") and msg.get(\"name\") != \"Orchestrator Agent\":\n            last_agent_message = msg\n            break\n    \n    if not last_agent_message:\n        # If no agent has spoken yet, it's the beginning of the workflow.\n        # Check if documents are mentioned in the first user message\n        initial_user_message = conversation_history[0].get(\"content\", \"\")\n        if \"document\" in initial_user_message.lower() or \"file\" in initial_user_message.lower() or \"attached\" in initial_user_message.lower():\n             return \"Document_Processing_agent\"\n        else:\n             return \"Customer_Verification_agent\"\n\n    last_message_content = last_agent_message.get(\"content\", \"\")\n    last_message_name = last_agent_message.get(\"name\", \"\")\n\n    # Rule 1: After document processing, verify customer\n    if last_message_name == \"Document_Processing_agent\":\n        return \"Customer_Verification_agent\"\n\n    # Rule 2: Handle customer verification failure\n    if last_message_name == \"Customer_Verification_agent\" and '\"found\": false' in last_message_content:\n        return \"Eligibility_Decision_agent\" # To ask the user for more info\n\n    # Rule 3: After successful verification, decide eligibility\n    if last_message_name == \"Customer_Verification_agent\" and '\"found\": true' in last_message_content:\n        return \"Eligibility_Decision_agent\"\n\n    # Rule 4: If eligibility agent needs docs, go to user\n    if last_message_name == \"Eligibility_Decision_agent\" and \"REQUEST_PROCESS_DOC\" in last_message_content:\n        return \"UserProxyAgent\"\n\n    # Rule 5: After a decision is made, execute it\n    if last_message_name == \"Eligibility_Decision_agent\" and '\"decision\": \"approve\"' in last_message_content:\n        return \"Benefit_Execution_agent\"\n\n    # Rule 6: After execution, or if declined, we are done\n    if last_message_name == \"Benefit_Execution_agent\" or ('\"decision\": \"decline\"' in last_message_content):\n        return \"TERMINATE\"\n        \n    # Fallback: if confused, ask the Judge agent for a recommendation\n    return \"Judge_agent\" ",
+                "global_imports": [],
+                "has_cancellation_support": false
+              },
+              "description": "Create custom tools by wrapping standard Python functions."
+            }
+          ],
+          "metadata": {}
+        },
+        "description": "Applies policy rules to decide next orchestration steps"
+      },
+      {
+        "provider": "autogen_agentchat.agents.AssistantAgent",
+        "component_type": "agent",
+        "version": 1,
+        "component_version": 1,
+        "label": "Benefit Execution",
+        "config": {
+          "name": "Benefit_Execution_agent",
+          "description": "Executes benefit after approval",
+          "model_client": {
+            "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+            "config": {
+              "model": "gpt-4o-mini"
+            },
+            "component_type": "model",
+            "version": 1,
+            "component_version": 1,
+            "description": "Chat completion client for OpenAI hosted models.",
+            "label": "OpenAIChatCompletionClient"
+          },
+          "model_context": {
+            "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+            "config": {},
+            "component_type": "chat_completion_context",
+            "version": 1,
+            "component_version": 1,
+            "description": "An unbounded chat completion context that keeps a view of the all the messages.",
+            "label": "UnboundedChatCompletionContext"
+          },
+          "system_message": "You are the Benefit Execution Agent.\nYour job is to execute benefits (e.g. enrollment, notification) after an approved eligibility decision.\n\nYou will receive:\n- Customer ID\n- Decision status\n- Contextual data\n\nExecute the appropriate system calls and return:\n{\n  \"status\": \"success\" | \"failure\",\n  \"details\": \"...\"\n}",
+          "reflect_on_tool_use": false,
+          "model_client_stream": false,
+          "tool_call_summary_format": "{result}",
+          "tools": [],
+          "metadata": {}
+        },
+        "description": "Executes benefit after approval"
+      },
+      {
+        "provider": "autogen_agentchat.agents.AssistantAgent",
+        "component_type": "agent",
+        "version": 1,
+        "component_version": 1,
+        "label": "Judge Agent",
+        "config": {
+          "name": "Judge_agent",
+          "description": "Monitors orchestration correctness and suggests human review",
+          "model_client": {
+            "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+            "config": {
+              "model": "gpt-4o-mini"
+            },
+            "component_type": "model",
+            "version": 1,
+            "component_version": 1,
+            "description": "Chat completion client for OpenAI hosted models.",
+            "label": "OpenAIChatCompletionClient"
+          },
+          "model_context": {
+            "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+            "config": {},
+            "component_type": "chat_completion_context",
+            "version": 1,
+            "component_version": 1,
+            "description": "An unbounded chat completion context that keeps a view of the all the messages.",
+            "label": "UnboundedChatCompletionContext"
+          },
+          "system_message": "You are the Judge Agent.\nYou monitor the Orchestrator's plans and give inline feedback.\n\nWhen the Orchestrator submits a plan or process summary:\n\n- Evaluate it for logic, coverage, and correctness.\n- Return structured feedback:\n{\n  \"verdict\": \"OK\" | \"ISSUE\",\n  \"issues\": [ \"Missing step...\", \"Risk: No user input...\" ],\n  \"recommended_action\": \"INVOKE:UserReview\" | null\n}",
+          "reflect_on_tool_use": false,
+          "model_client_stream": false,
+          "tool_call_summary_format": "{result}",
+          "tools": [],
+          "metadata": {}
+        },
+        "description": "Monitors orchestration correctness and suggests human review"
+      },
+      {
+        "provider": "autogen_agentchat.agents.UserProxyAgent",
+        "component_type": "agent",
+        "version": 1,
+        "component_version": 1,
+        "label": "UserProxyAgent",
+        "config": {
+          "name": "user_proxy",
+          "description": "Handles user questions, uploads, and final approval",
+          "model_client_stream": false,
+          "reflect_on_tool_use": false,
+          "tool_call_summary_format": "{result}",
+          "metadata": {}
+        },
+        "description": "Handles user questions, uploads, and final approval"
+      }
+    ],
+    "model_client": {
+      "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+      "component_type": "model",
+      "version": 1,
+      "component_version": 1,
+      "config": {
+        "model": "gpt-4o-mini"
+      }
+    },
+    "allow_repeated_speaker": false,
+    "termination_condition": {
+      "provider": "autogen_agentchat.base.OrTerminationCondition",
+      "component_type": "termination",
+      "version": 1,
+      "component_version": 1,
+      "config": {
+        "conditions": [
+          {
+            "provider": "autogen_agentchat.conditions.MaxMessageTermination",
+            "component_type": "termination",
+            "version": 1,
+            "component_version": 1,
+            "config": {
+              "max_messages": 200
+            }
+          },
+          {
+            "provider": "autogen_agentchat.conditions.TextMentionTermination",
+            "component_type": "termination",
+            "version": 1,
+            "component_version": 1,
+            "config": {
+              "text": "TERMINATE"
+            }
+          }
+        ]
+      }
+    },
+    "selector_prompt": "You are the Orchestrator Agent.\nYour job is to coordinate a multi-agent team to process a benefit request.\nAt each step, you must consult the `Rule_agent` to determine which agent to invoke next. Follow the `Rule_agent`'s suggestion precisely. Do not make your own decisions about the workflow.",
+    "max_selector_attempts": 3,
+    "emit_team_events": false,
+    "model_client_streaming": false
+  }
+}

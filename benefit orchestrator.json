@@ -1,0 +1,280 @@
+{
+    "provider": "autogen_agentchat.teams.SelectorGroupChat",
+    "component_type": "team",
+    "version": 1,
+    "component_version": 1,
+    "label": "Benefit Orchestrator",
+    "config": {
+      "participants": [
+        {
+          "provider": "autogen_agentchat.agents.AssistantAgent",
+          "component_type": "agent",
+          "version": 1,
+          "component_version": 1,
+          "label": "Customer Verification",
+          "config": {
+            "name": "Customer_Verification_agent",
+            "description": "Looks up requester or spouse in SOR",
+            "model_client": {
+              "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+              "config": {
+                "model": "gpt-4o-mini"
+              }
+            },
+            "model_context": {
+              "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+              "config": {}
+            },
+            "system_message": "You are the Customer Verification Agent.\nYour job is to verify whether the requester (or their spouse) exists in the System of Record (SOR).\n\nYou will receive identifying data such as SSN, name, or address. You must:\n- Check if the person is in SOR.\n- Determine if the match is for the requester or a spouse.\n- Output structured response:\n{\n  \"found\": true | false,\n  \"customer_id\": \"string or null\",\n  \"actor\": \"self\" | \"spouse\"\n}\n\nIf ambiguous, return found: false and explain. Accuracy and clarity are key.",
+            "reflect_on_tool_use": false,
+            "model_client_stream": false,
+            "tool_call_summary_format": "{result}",
+            "tools": [
+              {
+                "provider": "autogen_core.tools.FunctionTool",
+                "component_type": "tool",
+                "version": 1,
+                "component_version": 1,
+                "description": "Searches for a customer in the System of Record.",
+                "label": "Customer Search Tool",
+                "config": {
+                  "name": "customer_search",
+                  "description": "Looks up a customer based on identifying information.",
+                  "source_code": "pass",
+                  "global_imports": [],
+                  "has_cancellation_support": false
+                }
+              }
+            ]
+          }
+        },
+        {
+          "provider": "autogen_agentchat.agents.AssistantAgent",
+          "component_type": "agent",
+          "version": 1,
+          "component_version": 1,
+          "label": "Document Retrieval",
+          "config": {
+            "name": "Document_Retrieval_agent",
+            "description": "Retrieves document information from a pre-processed list.",
+            "model_client": {
+              "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+              "config": {
+                "model": "gpt-4o-mini"
+              }
+            },
+            "model_context": {
+              "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+              "config": {}
+            },
+            "system_message": "You are the Document Retrieval Agent. Your job is to find and provide information about documents from a known list. You have two tools:\n1. `get_all_documents()`: Use this to see a list of all available documents.\n2. `get_document_content(document_name)`: Use this to get the specific contents of a single document from the full list. You must provide the full list of documents as the first argument to this tool.",
+            "reflect_on_tool_use": false,
+            "model_client_stream": false,
+            "tool_call_summary_format": "{result}",
+            "tools": [
+              {
+                "provider": "autogen_core.tools.FunctionTool",
+                "component_type": "tool",
+                "version": 1,
+                "component_version": 1,
+                "label": "Get All Documents Tool",
+                "config": {
+                  "name": "get_all_documents",
+                  "description": "Returns a complete list of all available dummy documents.",
+                  "source_code": "pass",
+                  "global_imports": [],
+                  "has_cancellation_support": false
+                }
+              },
+              {
+                "provider": "autogen_core.tools.FunctionTool",
+                "component_type": "tool",
+                "version": 1,
+                "component_version": 1,
+                "label": "Get Document Content Tool",
+                "config": {
+                  "name": "get_document_content",
+                  "description": "Searches a JSON list of documents for a specific document by name and returns its content.",
+                  "source_code": "pass",
+                  "global_imports": [],
+                  "has_cancellation_support": false
+                }
+              }
+            ]
+          }
+        },
+        {
+          "provider": "autogen_agentchat.agents.AssistantAgent",
+          "component_type": "agent",
+          "version": 1,
+          "component_version": 1,
+          "label": "Eligibility Decision",
+          "config": {
+            "name": "Eligibility_Decision_agent",
+            "description": "Determines eligibility based on verified context and docs",
+            "model_client": {
+              "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+              "config": {
+                "model": "gpt-4o-mini"
+              }
+            },
+            "model_context": {
+              "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+              "config": {}
+            },
+            "system_message": "Based on verified identity and extracted document information, determine whether the customer qualifies for the requested benefit.\n\nYou may receive incomplete input. If so:\nAsk for documents using:\n{ \"action\": \"REQUEST_PROCESS_DOC\", \"docs\": [...] }\n\nAsk for user input using:\n{ \"action\": \"REQUEST_USER_INPUT\", \"message\": \"...\" }\n\nWhen ready to make a decision:\n{\n  \"action\": \"DECISION\",\n  \"decision\": \"approve\" | \"decline\",\n  \"justification\": \"...\"\n}\n\nDo not invoke follow-up steps — the Orchestrator will handle those.",
+            "reflect_on_tool_use": false,
+            "model_client_stream": false,
+            "tool_call_summary_format": "{result}",
+            "tools": []
+          }
+        },
+        {
+          "provider": "autogen_agentchat.agents.AssistantAgent",
+          "component_type": "agent",
+          "version": 1,
+          "component_version": 1,
+          "label": "Rule Agent",
+          "config": {
+            "name": "Rule_agent",
+            "description": "Applies policy rules to decide next orchestration steps",
+            "model_client": {
+              "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+              "config": {
+                "model": "gpt-4o-mini"
+              }
+            },
+            "model_context": {
+              "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+              "config": {}
+            },
+            "system_message": "You are the Rule Agent. Your sole responsibility is to decide the next step in the workflow. You will be given the conversation history. You MUST use the `suggest_next_step` tool to analyze the history and determine the next agent to invoke. Output ONLY the name of the agent suggested by the tool.",
+            "reflect_on_tool_use": false,
+            "model_client_stream": false,
+            "tool_call_summary_format": "{result}",
+            "tools": [
+              {
+                "provider": "autogen_core.tools.FunctionTool",
+                "component_type": "tool",
+                "version": 1,
+                "component_version": 1,
+                "label": "Suggest Next Step Tool",
+                "config": {
+                  "name": "suggest_next_step",
+                  "description": "Analyzes the conversation history JSON to suggest the next agent. The full conversation history must be passed to this tool as a JSON string.",
+                  "source_code": "pass",
+                  "global_imports": [],
+                  "has_cancellation_support": false
+                }
+              }
+            ]
+          }
+        },
+        {
+          "provider": "autogen_agentchat.agents.AssistantAgent",
+          "component_type": "agent",
+          "version": 1,
+          "component_version": 1,
+          "label": "Benefit Execution",
+          "config": {
+            "name": "Benefit_Execution_agent",
+            "description": "Executes benefit after approval",
+            "model_client": {
+              "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+              "config": {
+                "model": "gpt-4o-mini"
+              }
+            },
+            "model_context": {
+              "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+              "config": {}
+            },
+            "system_message": "You are the Benefit Execution Agent.\nYour job is to execute benefits (e.g. enrollment, notification) after an approved eligibility decision.\n\nYou will receive:\n- Customer ID\n- Decision status\n- Contextual data\n\nExecute the appropriate system calls and return:\n{\n  \"status\": \"success\" | \"failure\",\n  \"details\": \"...\"\n}",
+            "reflect_on_tool_use": false,
+            "model_client_stream": false,
+            "tool_call_summary_format": "{result}",
+            "tools": []
+          }
+        },
+        {
+          "provider": "autogen_agentchat.agents.AssistantAgent",
+          "component_type": "agent",
+          "version": 1,
+          "component_version": 1,
+          "label": "Judge Agent",
+          "config": {
+            "name": "Judge_agent",
+            "description": "Monitors orchestration correctness and suggests human review",
+            "model_client": {
+              "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+              "config": {
+                "model": "gpt-4o-mini"
+              }
+            },
+            "model_context": {
+              "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+              "config": {}
+            },
+            "system_message": "You are the Judge Agent.\nYou monitor the Orchestrator's plans and give inline feedback.\n\nWhen the Orchestrator submits a plan or process summary:\n\n- Evaluate it for logic, coverage, and correctness.\n- Return structured feedback:\n{\n  \"verdict\": \"OK\" | \"ISSUE\",\n  \"issues\": [ \"Missing step...\", \"Risk: No user input...\" ],\n  \"recommended_action\": \"INVOKE:UserReview\" | null\n}",
+            "reflect_on_tool_use": false,
+            "model_client_stream": false,
+            "tool_call_summary_format": "{result}",
+            "tools": []
+          }
+        },
+        {
+          "provider": "autogen_agentchat.agents.UserProxyAgent",
+          "component_type": "agent",
+          "version": 1,
+          "component_version": 1,
+          "label": "UserProxyAgent",
+          "config": {
+            "name": "user_proxy",
+            "description": "Handles user questions, uploads, and final approval"
+          }
+        }
+      ],
+      "model_client": {
+        "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+        "component_type": "model",
+        "version": 1,
+        "component_version": 1,
+        "config": {
+          "model": "gpt-4o-mini"
+        }
+      },
+      "allow_repeated_speaker": false,
+      "termination_condition": {
+        "provider": "autogen_agentchat.base.OrTerminationCondition",
+        "component_type": "termination",
+        "version": 1,
+        "component_version": 1,
+        "config": {
+          "conditions": [
+            {
+              "provider": "autogen_agentchat.conditions.MaxMessageTermination",
+              "component_type": "termination",
+              "version": 1,
+              "component_version": 1,
+              "config": {
+                "max_messages": 200
+              }
+            },
+            {
+              "provider": "autogen_agentchat.conditions.TextMentionTermination",
+              "component_type": "termination",
+              "version": 1,
+              "component_version": 1,
+              "config": {
+                "text": "TERMINATE"
+              }
+            }
+          ]
+        }
+      },
+      "selector_prompt": "You are the Orchestrator Agent.\nYour job is to coordinate a multi-agent team to process a benefit request.\nAt each step, you must consult the `Rule_agent` to determine which agent to invoke next. Follow the `Rule_agent`'s suggestion precisely. Do not make your own decisions about the workflow.",
+      "max_selector_attempts": 3,
+      "emit_team_events": false,
+      "model_client_streaming": false
+    }
+  }

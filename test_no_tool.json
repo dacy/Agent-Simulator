@@ -1,0 +1,31 @@
+{
+  "provider": "autogen_agentchat.agents.AssistantAgent",
+  "component_type": "agent",
+  "version": 1,
+  "component_version": 1,
+  "label": "Test Agent No Tools",
+  "config": {
+    "name": "test_agent_no_tools",
+    "description": "A simple test agent without tools",
+    "system_message": "You are a helpful assistant.",
+    "model_client": {
+      "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
+      "component_type": "model",
+      "version": 1,
+      "component_version": 1,
+      "config": {
+        "model": "gpt-4o-mini",
+        "api_key": "your-api-key-here"
+      }
+    },
+    "tools": [],
+    "handoffs": [],
+    "model_context": {
+      "provider": "autogen_core.model_context.UnboundedChatCompletionContext",
+      "component_type": "chat_completion_context",
+      "version": 1,
+      "component_version": 1,
+      "config": {}
+    }
+  }
+} 
