@@ -1,3 +1,6 @@
+# venv
+venv/
+
 # Geneated orchestrator file
 generated_orchestrator.json
 
@@ -226,4 +229,14 @@ temp_*.json
 .env.test.local
 .env.production.local
 secrets.json
-config/secrets.json 
+config/secrets.json
+
+# Logs and temp files
+*.log
+*.tmp
+
+# Jupyter Notebooks (if not tracked)
+*.ipynb
+
+# AutoGen Studio cache/config (if any)
+autogen_studio_cache/ 
