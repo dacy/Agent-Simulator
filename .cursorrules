@@ -9,31 +9,6 @@ Also update the progress of the task in the Scratchpad when you finish a subtask
 Especially when you finished a milestone, it will help to improve your depth of task accomplishment to use the scratchpad to reflect and plan.
 The goal is to help you maintain a big picture as well as the progress of the task. Always refer to the Scratchpad when you plan the next step.
 
-# Tools
-
-Note all the tools are in python. So in the case you need to do batch processing, you can always consult the python files and write your own script.
-
-## Web browser
-
-You could use the `tools/web_scraper.py` file to scrape the web.
-```
-py310/bin/python ./tools/web_scraper.py --max-concurrent 3 URL1 URL2 URL3
-```
-This will output the content of the web pages.
-
-## Search engine
-
-You could use the `tools/search_engine.py` file to search the web.
-```
-py310/bin/python ./tools/search_engine.py "your search keywords"
-```
-This will output the search results in the following format:
-```
-URL: https://example.com
-Title: This is the title of the search result
-Snippet: This is a snippet of the search result
-```
-If needed, you can further use the `web_scraper.py` file to scrape the web page content.
 
 
 # Lessons
@@ -61,8 +36,6 @@ If needed, you can further use the `web_scraper.py` file to scrape the web page 
 - **Individual agents must access conversation history through the messages parameter in their reply functions or their own conversation tracking**
 - **AutoGen agents with tools can get stuck in repetitive tool calling loops if system messages don't explicitly prohibit duplicate calls and if context windows are too small**
 - **OpenAI structured output JSON schemas require `"additionalProperties": false` for object properties to prevent validation errors**
-- **AutoGen Studio validates structured output configurations during import, requiring API key to be present - simple configurations don't require this validation**
-- **When removing structured output from model clients, add the JSON format back into system messages to maintain consistent agent responses**
 
 # Scratchpad
 

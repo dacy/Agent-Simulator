@@ -25,6 +25,14 @@ def customer_search(ssn: str = "", name: str = "", address: str = "") -> str:
     import json
     import difflib
     
+    def _generate_match_summary(confidence_factors):
+        """Generate a human-readable summary of what matched"""
+        if not confidence_factors:
+            return "No specific matches found"
+        
+        summaries = [factor[0] for factor in confidence_factors]
+        return "; ".join(summaries)
+    
     # Mock customers data (loaded from JSON files during team creation)
     MOCK_CUSTOMERS_DATA = [{'customerId': 'CUST-001', 'fullName': 'Ashlee Thompson', 'dateOfBirth': '1983-01-21', 'ssnLast4': '7583', 'email': 'kayla59@matthews.biz', 'phone': '824.057.7423x6297', 'address': {'street': '5896 Daniel Fort', 'city': 'Joshuahaven', 'state': 'AZ', 'zip': '94396'}, 'militaryStatus': 'Veteran', 'branch': 'Coast Guard', 'serviceStartDate': '2020-01-01', 'serviceEndDate': None}, {'customerId': 'CUST-002', 'fullName': 'Rachel Glover', 'dateOfBirth': '1994-09-19', 'ssnLast4': '8365', 'email': 'mendozanicholas@yahoo.com', 'phone': '824.447.7428x7274', 'address': {'street': '3595 Elizabeth Passage', 'city': 'South Mariaton', 'state': 'OH', 'zip': '59096'}, 'militaryStatus': 'Reserve', 'branch': 'Army', 'serviceStartDate': '2018-10-09', 'serviceEndDate': None}, {'customerId': 'CUST-003', 'fullName': 'Heather Mason', 'dateOfBirth': '1998-05-15', 'ssnLast4': '4674', 'email': 'stephen16@gmail.com', 'phone': '079-991-8795', 'address': {'street': '38232 Joseph Fords', 'city': 'Lake Todd', 'state': 'AZ', 'zip': '58315'}, 'militaryStatus': 'Active Duty', 'branch': 'Army', 'serviceStartDate': '2020-05-17', 'serviceEndDate': None}, {'customerId': 'CUST-004', 'fullName': 'Corey Lucas', 'dateOfBirth': '1993-01-11', 'ssnLast4': '5829', 'email': 'wilsonlisa@williams.info', 'phone': '+1-589-467-8480x428', 'address': {'street': '5266 Shaw Locks', 'city': 'East Melissamouth', 'state': 'MO', 'zip': '35641'}, 'militaryStatus': 'Reserve', 'branch': 'Army', 'serviceStartDate': '2015-03-03', 'serviceEndDate': None}, {'customerId': 'CUST-005', 'fullName': 'Kristopher Phillips', 'dateOfBirth': '1988-03-04', 'ssnLast4': '7025', 'email': 'kellywagner@travis.com', 'phone': '001-161-483-3768x76063', 'address': {'street': '8009 Snyder Radial', 'city': 'East Christyville', 'state': 'KY', 'zip': '48228'}, 'militaryStatus': 'Active Duty', 'branch': 'Marines', 'serviceStartDate': '2014-07-31', 'serviceEndDate': None}]
     
@@ -140,19 +148,11 @@ def customer_search(ssn: str = "", name: str = "", address: str = "") -> str:
         "results": search_results[:5]  # Return top 5 matches
     }
     
-    return json.dumps(response, indent=2)
-
-def _generate_match_summary(confidence_factors: List[Tuple[str, int]]) -> str:
-    """Generate a human-readable summary of what matched"""
-    if not confidence_factors:
-        return "No specific matches found"
-    
-    summaries = [factor[0] for factor in confidence_factors]
-    return "; ".join(summaries) 
+    return json.dumps(response, indent=2) 
 
 
 def create_customer_verification_agent(mock_data: Dict[str, Any], model_client):
-    """Create the Customer Verification Agent with tools."""
+    """Create the Customer Verification Agent with tools and structured output."""
     
     tools = [
         FunctionTool(
@@ -161,6 +161,76 @@ def create_customer_verification_agent(mock_data: Dict[str, Any], model_client):
             func=customer_search
         )
     ]
+    
+    # Create a model client with structured output for verification results
+    from autogen_ext.models.openai import OpenAIChatCompletionClient
+    structured_model_client = OpenAIChatCompletionClient(
+        model="gpt-4o-mini",
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": "verification_response",
+                "strict": True,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "verification_result": {
+                            "type": "string",
+                            "description": "Overall verification outcome",
+                            "enum": ["verified", "not_found", "ambiguous"]
+                        },
+                        "confidence_percentage": {
+                            "type": "integer",
+                            "description": "Confidence level in the verification result (0-100)",
+                            "minimum": 0,
+                            "maximum": 100
+                        },
+                        "customer_id": {
+                            "type": ["string", "null"],
+                            "description": "Customer ID if found, null if not found"
+                        },
+                        "customer_name": {
+                            "type": "string",
+                            "description": "Name of the matched customer or requestor name"
+                        },
+                        "actor": {
+                            "type": "string",
+                            "description": "Who is making the request",
+                            "enum": ["self", "spouse"]
+                        },
+                        "match_details": {
+                            "type": "string",
+                            "description": "Description of what factors contributed to the match"
+                        },
+                        "search_strategy_used": {
+                            "type": "string",
+                            "description": "Description of the search approach taken"
+                        },
+                        "recommendation": {
+                            "type": "string",
+                            "description": "Recommended next action based on verification quality",
+                            "enum": [
+                                "Proceed with high confidence",
+                                "Manual review recommended", 
+                                "Additional verification needed"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "verification_result",
+                        "confidence_percentage",
+                        "customer_id",
+                        "customer_name",
+                        "actor",
+                        "match_details",
+                        "search_strategy_used",
+                        "recommendation"
+                    ],
+                    "additionalProperties": False
+                }
+            }
+        }
+    )
     
     system_message = """You are the Customer Verification Agent responsible for verifying customer identity using multiple data points with intelligent fuzzy matching.
 
@@ -200,25 +270,6 @@ def create_customer_verification_agent(mock_data: Dict[str, Any], model_client):
 **SPOUSE SEARCH CAPABILITY:**
 If the requestor is not found but mentions being a spouse, search for the service member's name to verify the family connection.
 
-**OUTPUT FORMAT:**
-```json
-{
-  "verification_result": "verified" | "not_found" | "ambiguous",
-  "confidence_percentage": 85,
-  "customer_id": "CUST-12345" | null,
-  "customer_name": "John Doe",
-  "actor": "self" | "spouse",
-  "match_details": "SSN exact match; Name exact match",
-  "search_strategy_used": "SSN + Name combination",
-  "recommendation": "Proceed with high confidence" | "Manual review recommended" | "Additional verification needed"
-}
-```
-
-**DECISION RULES:**
-- **Verified**: Confidence ≥ 70% with clear primary identifier match
-- **Ambiguous**: Multiple matches or confidence 50-69%
-- **Not Found**: No matches or all matches below 50% confidence
-
 **QUALITY STANDARDS:**
 - Always attempt multiple search strategies if initial search fails
 - Be transparent about match confidence and reasoning
@@ -231,7 +282,7 @@ If the requestor is not found but mentions being a spouse, search for the servic
     return AssistantAgent(
         name="Customer_Verification_agent",
         description="Verifies customer identity and authorization to request benefits",
-        model_client=model_client,
+        model_client=structured_model_client,
         model_context=HeadAndTailChatCompletionContext(head_size=1, tail_size=3),
         tools=tools,
         system_message=system_message,
