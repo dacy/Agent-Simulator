@@ -1,0 +1,5 @@
+autogen-agentchat>=0.2.0
+autogen-core>=0.2.0
+autogen-ext>=0.2.0
+autogenstudio>=0.4.0
+openai>=1.0.0 

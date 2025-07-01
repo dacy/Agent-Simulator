@@ -2,7 +2,13 @@
 
 This project demonstrates a sophisticated multi-agent workflow for a mock SCRA (Servicemembers Civil Relief Act) benefit processing system. It showcases the power and flexibility of using structured prompts to coordinate specialized agents, serving as an advanced playground for exploring agent orchestration, workflow automation, and decision-making in a semi-realistic military benefit processing scenario using AutoGen Studio.
 
-Military benefit processing workflow using AutoGen agents.
+## Requirements
+
+- Python 3.10+
+- Install dependencies:
+  ```bash
+  pip install -r requirements.txt
+  ```
 
 ## Quick Start
 
@@ -13,6 +19,7 @@ Military benefit processing workflow using AutoGen agents.
 
 2. **Use with AutoGen Studio**
    - Install: `pip install -U autogenstudio`
+   - In AutoGen Studio, you can set up an environment variable OPENAI_API_KEY (assuming you are using OpenAI models) and AutoGen will automatically use this for any OpenAI model clients you specify for your agents or teams. Alternatively you can specify the api key as part of the team or agent configuration.
    - Run: `autogenstudio ui --port 8081`
    - Open browser to `http://localhost:8081`
    - Toggle off visual builder to access JSON Editor
