@@ -19,7 +19,7 @@ from autogen_ext.models.openai import OpenAIChatCompletionClient
 # Import individual agent creators
 from agents.customer_verification_agent import create_customer_verification_agent
 from agents.document_processing_agent import create_document_processing_agent
-from agents.request_analysis_agent import create_request_analysis_agent
+from agents.orchestrator_agent import create_orchestrator_agent
 from agents.eligibility_decision_agent import create_eligibility_decision_agent
 from agents.benefit_execution_agent import create_benefit_execution_agent
 from agents.judge_agent import create_judge_agent
@@ -79,7 +79,7 @@ def create_benefit_orchestrator_team():
     # Create all agents using the modular approach
     customer_verification_agent = create_customer_verification_agent(mock_data, model_client)
     document_processing_agent = create_document_processing_agent(mock_data, model_client)
-    request_analysis_agent = create_request_analysis_agent(mock_data, model_client)
+    orchestrator_agent = create_orchestrator_agent(mock_data, model_client)
     eligibility_decision_agent = create_eligibility_decision_agent(model_client)
     benefit_execution_agent = create_benefit_execution_agent(model_client)
     judge_agent = create_judge_agent(model_client)
@@ -102,7 +102,7 @@ def create_benefit_orchestrator_team():
             customer_verification_agent,
             document_processing_agent,
             eligibility_decision_agent,
-            request_analysis_agent,
+            orchestrator_agent,
             benefit_execution_agent,
             judge_agent,
             user_proxy_agent
@@ -114,8 +114,8 @@ def create_benefit_orchestrator_team():
         selector_prompt="""STEP 1: Look at the conversation below and find the VERY LAST speaker (scan from bottom up, find the final agent name before a colon).
 
 STEP 2: Apply these rules:
-- If the final speaker was NOT 'Request_Analysis_agent' → return 'Request_Analysis_agent'
-- If the final speaker WAS 'Request_Analysis_agent' → look for 'next_agent' in their JSON response and return that agent name
+- If the final speaker was NOT 'Orchestrator_agent' → return 'Orchestrator_agent'
+- If the final speaker WAS 'Orchestrator_agent' → look for 'next_agent' in their JSON response and return that agent name
 
 <CONVERSATION_HISTORY>
 {history}

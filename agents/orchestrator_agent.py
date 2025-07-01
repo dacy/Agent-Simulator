@@ -1,6 +1,6 @@
 """
-Request Analysis Agent for the Benefit Orchestrator System.
-Handles request analysis and workflow routing decisions.
+Orchestrator Agent for the Benefit Orchestrator System.
+Handles workflow orchestration and routing decisions.
 """
 
 from typing import Dict, Any
@@ -9,7 +9,7 @@ from autogen_core.model_context import HeadAndTailChatCompletionContext
 from autogen_core.tools import FunctionTool
 
 
-# Request analysis tool functions embedded directly
+# Orchestrator tool functions embedded directly
 def get_request_details(request_id: str) -> str:
     """
     Retrieves the complete details of a benefit request using the request ID.
@@ -44,8 +44,8 @@ def get_request_details(request_id: str) -> str:
     }, indent=2)
 
 
-def create_request_analysis_agent(mock_data: Dict[str, Any], model_client):
-    """Create the Request Analysis Agent with tools and structured output."""
+def create_orchestrator_agent(mock_data: Dict[str, Any], model_client):
+    """Create the Orchestrator Agent with tools and structured output."""
     
     tools = [
         FunctionTool(
@@ -113,7 +113,7 @@ def create_request_analysis_agent(mock_data: Dict[str, Any], model_client):
         }
     )
     
-    system_message = """You are the Request Analysis Agent responsible for analyzing workflow context and routing to the next appropriate agent.
+    system_message = """You are the Orchestrator Agent responsible for analyzing workflow context and routing to the next appropriate agent.
 
 **TOOL USAGE RULES:**
 
@@ -183,7 +183,7 @@ def create_request_analysis_agent(mock_data: Dict[str, Any], model_client):
 Prefer using information already available in the conversation over making new tool calls. Only retrieve request details if they are truly missing from the current context."""
     
     return AssistantAgent(
-        name="Request_Analysis_agent",
+        name="Orchestrator_agent",
         description="Analyzes request details and applies policy rules to decide next orchestration steps",
         model_client=structured_model_client,
         model_context=HeadAndTailChatCompletionContext(head_size=1, tail_size=3),

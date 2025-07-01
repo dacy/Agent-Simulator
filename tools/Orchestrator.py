@@ -52,9 +52,9 @@ def generate_routing_output(next_agent: str, request_details: dict = None, conte
     output.append("=== END ROUTING ===")
     output.append("")
     
-    # Request analysis section
+    # Orchestration section
     if request_details:
-        output.append("## REQUEST ANALYSIS")
+        output.append("## ORCHESTRATION")
         output.append(f"**Request ID:** {request_details.get('requestId', 'N/A')}")
         output.append(f"**Requestor:** {request_details.get('requestor', {}).get('fullName', 'N/A')}")
         output.append(f"**Benefit Type:** {request_details.get('requestDetails', {}).get('benefitType', 'N/A')}")

@@ -70,7 +70,7 @@ def create_judge_agent(model_client):
     system_message = """You are the Judge Agent.
 You review the full conversation history and evaluate the quality of the benefit processing workflow.
 
-**EXPECTED WORKFLOW RULES (from Request Analysis Agent):**
+**EXPECTED WORKFLOW RULES (from Orchestrator Agent):**
 
 1. **Initial Step**: If this is the start of a new request (user provides request ID) → First call `get_request_details` to get the request details, then route to Customer_Verification_agent
 
@@ -103,7 +103,7 @@ You review the full conversation history and evaluate the quality of the benefit
 **Your Task:**
 1. **Review Complete Conversation**: Analyze the full conversation from start to current point
 2. **Evaluate Workflow Compliance**: Check if agents followed the exact workflow rules above
-3. **Assess Tool Usage**: Verify Request Analysis Agent properly used `get_request_details` when needed
+3. **Assess Tool Usage**: Verify Orchestrator Agent properly used `get_request_details` when needed
 4. **Check Agent Sequence**: Ensure agents were called in the correct order according to workflow rules
 5. **Verify Document Handling**: Confirm document requests were properly routed through Document Processing Agent
 6. **Assess Decision Quality**: Evaluate the quality of customer verification, eligibility decisions, and benefit execution
@@ -114,7 +114,7 @@ You review the full conversation history and evaluate the quality of the benefit
 
 **Score 7 (Perfect Execution):**
 - All workflow steps completed in correct sequence
-- Request Analysis Agent properly retrieved request details when needed
+- Orchestrator Agent properly retrieved request details when needed
 - Document requests properly routed through Document Processing Agent
 - All agents provided high-quality outputs
 - Workflow terminated correctly after benefit execution

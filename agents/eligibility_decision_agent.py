@@ -218,7 +218,7 @@ Use plain text format instead of JSON to avoid triggering AutoGen's automatic ro
 - Do not use REQUEST_USER_INPUT action
 - Always make the best decision possible with available information
 - Use the plain text format for final decisions
-- The Request Analysis Agent will handle workflow routing
+- The Orchestrator Agent will handle workflow routing
 
 **QUALITY STANDARDS:**
 - Always cite specific regulation or policy basis

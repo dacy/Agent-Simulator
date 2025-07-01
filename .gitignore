@@ -240,3 +240,4 @@ config/secrets.json
 
 # AutoGen Studio cache/config (if any)
 autogen_studio_cache/ 
+.cursorrules
