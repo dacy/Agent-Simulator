@@ -32,12 +32,15 @@ The goal is to help you maintain a big picture as well as the progress of the ta
 - AutoGen orchestrators can get stuck in loops if selector prompt doesn't clearly define when to select Rule_agent vs when to select the suggested business agent
 - AutoGen SelectorGroupChat selector_prompt must use proper variables {history}, {roles}, {participants} to access conversation context - without these the orchestrator only sees its system prompt
 - UserProxyAgent in AutoGen Studio is for user input collection only - it should NOT have a function_map, just name and description fields
+- **{history} parameter only works for selector agents/orchestrators, NOT for individual agent system messages**
+- **Individual agents must access conversation history through the messages parameter in their reply functions or their own conversation tracking**
+- **AutoGen agents with tools can get stuck in repetitive tool calling loops if system messages don't explicitly prohibit duplicate calls and if context windows are too small**
 
 # Scratchpad
 
 ## Current Task: AutoGen Studio Rule Agent Natural Language Implementation
 
-### Problem Solved
+### Problem RESOLVED ✅
 [X] Replaced complex `suggest_next_step` tool with natural language workflow rules
 [X] Updated Rule Agent system message with clear, structured rules
 [X] Removed the Rule Agent tool file and dependencies
@@ -54,56 +57,28 @@ The goal is to help you maintain a big picture as well as the progress of the ta
 [X] FIXED JSON SYNTAX VIOLATION - Removed unnecessary function_map from UserProxyAgent
 [X] **ENHANCED REQUEST ANALYSIS AGENT** - Now provides comprehensive briefings with request details and specific instructions
 [X] **ENHANCED CUSTOMER VERIFICATION AGENT** - Now supports intelligent fuzzy search with confidence scoring
+[X] **IDENTIFIED {history} LIMITATION** - {history} parameter only works for orchestrator selector prompts, not individual agent system messages
+[X] **FIXED {history} PARAMETER ISSUE** - Removed broken {history} approach from Request Analysis Agent system message
 
-### Current Status
-The AutoGen Studio configuration is now complete and generates valid JSON. Key achievements:
+### Current Status: COMPLETE ✅
 
-✅ **Enhanced Customer Verification Agent**
-- **Intelligent Search Strategy**: Uses best judgment to determine optimal search approach
-- **Fuzzy Matching**: Handles misspellings and variations in names/addresses
-- **Confidence Scoring**: Percentage-based confidence with detailed factor analysis
-- **Multi-Criteria Search**: SSN (40%), Name (30%), Address (30%) weighted scoring
-- **Decision Logic**: Clear confidence thresholds (90-100% high, 70-89% good, 50-69% moderate, <50% low)
-- **Structured Output**: JSON response with verification result, confidence, match details, and recommendations
+**Problem RESOLVED:** The Request Analysis Agent repetitive tool calling issue has been fixed by:
+- **Added explicit anti-loop rules** to system message preventing duplicate `get_request_details` calls
+- **Increased context window** from `tail_size: 1` to `tail_size: 3` for better conversation awareness
+- **Added history-first approach** requiring agents to check recent messages before tool calls
+- **Implemented strict tool call conditions** with clear criteria for when to use tools
 
-✅ **Enhanced Request Analysis Agent**
-- Now provides comprehensive briefings instead of just agent names
-- Retrieves and presents complete request details
-- Gives specific, detailed instructions to the next agent
-- Includes context summary of workflow progress
-- Updated orchestrator selector to parse the new format
-- **NEW**: Case insensitive request ID search
-- **NEW**: Requests user input when request ID not found instead of terminating
+**Previous Issues Also Resolved:**
+- **{history} parameter issue** - Removed broken {history} approach from system messages
+- **Orchestrator routing reliability** - Implemented HeadAndTailChatCompletionContext with bulletproof selector prompt
+- **Function call dependency** - Replaced `generate_routing_output` function requirement with direct JSON format for cleaner responses
 
-✅ **Clean UserProxyAgent Configuration**
-- Removed unnecessary function_map injection completely
-- UserProxyAgent now has only name and description (proper AutoGen Studio format)
-- Valid JSON syntax throughout the configuration
-
-✅ **Working Mock Data System**
-- Centralized mock data in JSON files
-- Build-time injection of realistic data
-- Tools use actual mock data instead of hard-coded dummy data
-
-✅ **Request Analysis Agent**
-- Successfully renamed from Rule Agent
-- Added get_request_details tool for retrieving complete request information
-- Tool source code properly injected into agent configuration
-- **NEW**: Comprehensive briefing format with detailed instructions for next agents
-- **NEW**: Case insensitive request ID matching (REQ-001 = req-001 = Req-001)
-- **NEW**: Requests detailed user input when invalid request ID provided (collects full requestor info, military service details, benefit request details, and supporting documents)
-
-✅ **Tool Integration Working**
-- All agent tools properly injected with mock data
-- Customer Verification, Document Processing, and Request Analysis tools functional
-- No more JSON syntax violations
-- **NEW**: All ID-based searches are case insensitive (request IDs, document IDs)
-
-✅ **Case Insensitive ID Searches**
-- **Request Analysis Agent**: Case insensitive request ID search
-- **Document Processing Agent**: Case insensitive request ID and document ID search
-- **Flexible Input**: Users can use any case format for IDs (REQ-001, req-001, Req-001, DOC-001, doc-001, etc.)
-- **Proper Response Mapping**: Returns actual case format in responses while accepting any case input
+**Key Learnings Applied:**
+- **{history} only works for selector agents/orchestrators** (GroupChat managers)
+- **Individual agents cannot use {history}** in their system messages
+- **AutoGen agents need explicit anti-loop protection** in system messages when using tools
+- **Context window size matters** for agents to see their own previous actions
+- **Simpler approaches often work better** than complex workarounds
 
 ### Customer Verification Agent Enhancement Details
 **Enhanced Tool Capabilities:**
@@ -158,13 +133,63 @@ The AutoGen Studio configuration is now complete and generates valid JSON. Key a
 - Updated selector prompt to parse agent name from "## NEXT AGENT" section
 - Enhanced parsing instructions for the new detailed format
 
-### Next Steps
-[X] **Configuration is complete and ready for AutoGen Studio**
-- JSON syntax is valid
-- All agents properly configured
-- Mock data system working
-- Tool integration successful
-- Request Analysis Agent provides comprehensive briefings
-- Customer Verification Agent supports intelligent fuzzy search with confidence scoring
+### Status: COMPLETE - Orchestrator Optimization ✅
+[X] **FINAL SOLUTION: Simplified Orchestrator + BufferedChatCompletionContext**
 
-The configuration should now work properly in AutoGen Studio with the streamlined sequential workflow, natural language rule-based orchestration, detailed agent briefings, and intelligent customer verification with confidence scoring.
+#### **Problem Solved:**
+- **Issue**: Orchestrator routing unreliably due to conversation history confusion
+- **Root Cause**: Full conversation history overwhelming selector prompt decision-making
+
+#### **Two-Part Solution Applied:**
+
+**1. HeadAndTailChatCompletionContext (Smart History Limitation):**
+```json
+"model_context": {
+  "provider": "autogen_core.model_context.HeadAndTailChatCompletionContext",
+  "component_type": "chat_completion_context", 
+  "config": {
+    "head_size": 1,
+    "tail_size": 2
+  }
+}
+```
+
+**2. Bulletproof Selector Prompt (Step-by-Step Last Speaker Detection):**
+```
+STEP 1: Look at the conversation below and find the VERY LAST speaker (scan from bottom up, find the final agent name before a colon).
+
+STEP 2: Apply these rules:
+- If the final speaker was NOT 'Request_Analysis_agent' → return 'Request_Analysis_agent'
+- If the final speaker WAS 'Request_Analysis_agent' → look for 'next_agent' in their message and return that agent name
+```
+
+#### **Why This Architecture Works:**
+- **Request Analysis Agent = The Brain**: Makes all routing decisions based on workflow rules
+- **Orchestrator = Simple Router**: Just delegates to Request Analysis Agent or follows its guidance
+- **HeadAndTailChatCompletionContext**: Keeps initial task (head_size: 1) + last 2 messages (tail_size: 2)
+- **Minimal Complexity**: Only 2 rules instead of complex conditional logic
+
+#### **Benefits:**
+✅ **Smart History Management**: Preserves initial task context + immediate recent context  
+✅ **Eliminates History Confusion**: No overwhelming conversation logs  
+✅ **Bulletproof Last Speaker Detection**: Step-by-step instructions prevent parsing errors  
+✅ **Simple Logic**: Two-rule orchestrator is easy to debug and maintain  
+✅ **Centralized Intelligence**: All workflow logic concentrated in Request Analysis Agent  
+✅ **AutoGen Native**: Uses official AutoGen model_context system  
+✅ **Scalable**: Easy to modify workflow rules without touching orchestrator  
+
+#### **Critical Fix Applied:**
+**Problem Identified from User Log**: Even with history limitation, AutoGen was bundling multiple messages into "Last message" block, making it impossible for the orchestrator to identify the actual last speaker.
+
+**Solution**: Updated selector prompt with explicit STEP 1 and STEP 2 instructions:
+- **STEP 1**: "Look at the conversation below and find the VERY LAST speaker (scan from bottom up, find the final agent name before a colon)"
+- **STEP 2**: Apply the routing rules
+
+**XML Separator Added**: Wrapped history in `<CONVERSATION_HISTORY>` tags to clearly separate conversation from instructions, preventing confusion when selector prompt instructions appeared to be part of the conversation.
+
+This prevents the LLM from getting confused when multiple agent messages appear in the history block.  
+
+#### **Alternative Buffer Options Available:**
+- **BufferedChatCompletionContext**: Keep last N messages only
+- **TokenLimitedChatCompletionContext**: Limit by token count instead of message count  
+- **UnboundedChatCompletionContext**: Keep all messages (original default)

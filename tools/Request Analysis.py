@@ -29,4 +29,54 @@ def get_request_details(request_id: str) -> str:
         "success": False,
         "error": f"Request ID '{request_id}' not found",
         "available_request_ids": available_request_ids
-    }, indent=2) 
+    }, indent=2)
+
+def generate_routing_output(next_agent: str, request_details: dict = None, context_summary: str = "", instructions: str = "") -> str:
+    """
+    Generates a structured routing output that the orchestrator can reliably parse.
+    
+    Args:
+        next_agent (str): The name of the next agent to route to
+        request_details (dict): Optional request details to include
+        context_summary (str): Summary of current workflow progress
+        instructions (str): Specific instructions for the next agent
+        
+    Returns:
+        str: Formatted routing output with clear agent selection
+    """
+    output = []
+    
+    # Very prominent routing section that orchestrator looks for
+    output.append("=== ORCHESTRATOR ROUTING ===")
+    output.append(f"NEXT_AGENT: {next_agent}")
+    output.append("=== END ROUTING ===")
+    output.append("")
+    
+    # Request analysis section
+    if request_details:
+        output.append("## REQUEST ANALYSIS")
+        output.append(f"**Request ID:** {request_details.get('requestId', 'N/A')}")
+        output.append(f"**Requestor:** {request_details.get('requestor', {}).get('fullName', 'N/A')}")
+        output.append(f"**Benefit Type:** {request_details.get('requestDetails', {}).get('benefitType', 'N/A')}")
+        output.append(f"**Military Status:** {request_details.get('requestor', {}).get('militaryStatus', 'N/A')}")
+        output.append(f"**Service Branch:** {request_details.get('requestor', {}).get('branch', 'N/A')}")
+        output.append("")
+    
+    # Next agent section (backup for the orchestrator)
+    output.append("## NEXT AGENT")
+    output.append(f"**Agent:** {next_agent}")
+    output.append("")
+    
+    # Instructions for next agent
+    if instructions:
+        output.append("## INSTRUCTIONS FOR NEXT AGENT")
+        output.append(instructions)
+        output.append("")
+    
+    # Context summary
+    if context_summary:
+        output.append("## CONTEXT SUMMARY")
+        output.append(context_summary)
+        output.append("")
+    
+    return "\n".join(output) 
