@@ -18,6 +18,10 @@ Military benefit processing workflow using AutoGen agents.
    - Toggle off visual builder to access JSON Editor
    - Paste contents of `generated_orchestrator.json`
 
+**Sample Request IDs for Testing:**
+- `REQ-001`, `REQ-002`, `REQ-003`, `REQ-004`, `REQ-005`
+Test data for these request IDs is embedded directly in the agent code.
+
 ## Configuration
 
 **Mock Data**: Built into each agent file (embedded in the code)
@@ -30,9 +34,17 @@ MOCK_REQUESTS_DATA = [{'requestId': 'REQ-001', 'timestamp': '2025-06-30T21:50:27
 
 ## Architecture
 
-**SelectorGroupChat Team**: Uses a ChatCompletion model to select the next speaker after each message. The team has simple routing logic due to AutoGen Studio limitations - all complex workflow decisions are handled by the Orchestrator Agent.
+The system is built around a modular team of specialized agents, each responsible for a distinct part of the SCRA benefit workflow:
 
-
+- **Orchestrator Agent**: Central coordinator that interprets workflow state, applies business rules, and routes tasks to the appropriate agent using prompt-based logic.
+ - **SelectorGroupChat Team**: Uses a 
+ChatCompletion model to select the 
+next speaker after each message. The 
+team has simple routing logic due to 
+AutoGen Studio limitations - all 
+complex workflow decisions are 
+handled by the Orchestrator Agent.
+- **Verification, Document, Eligibility, Judge, Execution Agents**: Each agent handles a specific domain—customer verification, document retrieval/analysis, eligibility decision, quality/judgment, and benefit execution. Agents communicate via structured messages and are coordinated by the Orchestrator.
 
 ## 📄 License
 
