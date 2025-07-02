@@ -43,17 +43,31 @@ def get_document(request_id: str, document_id: str) -> str:
                 "effective_date": request["requestDetails"]["requestedEffectiveDate"],
                 "from_location": "Previous Base",
                 "to_location": "New Assignment Location",
-                "report_date": request["requestDetails"]["requestedEffectiveDate"]
+                "report_date": request["requestDetails"]["requestedEffectiveDate"],
+                "service_member_name": request["requestor"]["fullName"],
+                "rank": "Sergeant (E-5)",
+                "branch": request["requestor"]["branch"],
+                "orders_number": "ORD-2025-001",
+                "deployment_type": "PCS",
+                "duration_days": 180,
+                "authorized_by": "Department of Defense"
             }
         
         elif doc_type == "Proof of Military Service":
             return {
                 **base_content,
                 "service_verification": True,
-                "active_duty_status": "Active",
-                "branch": "U.S. Army",
+                "active_duty_status": request["requestor"]["militaryStatus"],
+                "branch": request["requestor"]["branch"],
                 "rank": "Sergeant (E-5)",
-                "verification_date": "2024-12-30"
+                "verification_date": "2024-12-30",
+                "service_start_date": request["requestor"]["serviceStartDate"],
+                "service_end_date": request["requestor"]["serviceEndDate"],
+                "service_duration_months": 48,
+                "discharge_type": "Honorable" if request["requestor"]["militaryStatus"] == "Veteran" else None,
+                "military_occupation": "Infantry",
+                "combat_service": False,
+                "service_connected_disabilities": []
             }
         
         elif doc_type == "Leave and Earnings Statement":
@@ -63,7 +77,14 @@ def get_document(request_id: str, document_id: str) -> str:
                 "base_pay": 3500.00,
                 "allowances": 1200.00,
                 "deductions": 800.00,
-                "net_pay": 3900.00
+                "net_pay": 3900.00,
+                "service_member_name": request["requestor"]["fullName"],
+                "rank": "Sergeant (E-5)",
+                "branch": request["requestor"]["branch"],
+                "deployment_allowance": 250.00,
+                "hazard_pay": 0.00,
+                "combat_pay": 0.00,
+                "total_compensation": 4150.00
             }
         
         elif doc_type == "Proof of Residence":
@@ -72,14 +93,110 @@ def get_document(request_id: str, document_id: str) -> str:
                 "address_verified": True,
                 "lease_start_date": "2024-01-01",
                 "monthly_rent": 2500.00,
-                "landlord_contact": "Property Management Company"
+                "landlord_contact": "Property Management Company",
+                "current_address": request["requestor"]["address"],
+                "residency_duration_months": 12,
+                "utility_bills_included": True,
+                "military_housing": False,
+                "pcs_affected": True
+            }
+        
+        elif doc_type == "Loan Statement":
+            return {
+                **base_content,
+                "loan_type": "Auto Loan",
+                "account_number": "AUTO-12345",
+                "original_balance": 25000.00,
+                "current_balance": 18000.00,
+                "monthly_payment": 450.00,
+                "interest_rate": 4.5,
+                "loan_origination_date": "2023-01-15",
+                "lender_name": "Military Auto Loans Inc.",
+                "payment_history": "Current",
+                "deferment_eligible": True,
+                "pre_service_account": False
+            }
+        
+        elif doc_type == "Financial Hardship Documentation":
+            return {
+                **base_content,
+                "hardship_type": "Service-related financial burden",
+                "monthly_income": 3900.00,
+                "monthly_expenses": 4200.00,
+                "deficit_amount": 300.00,
+                "hardship_duration_months": 6,
+                "service_connection": True,
+                "documentation_provided": ["Bank statements", "Expense records"],
+                "verification_status": "Verified"
+            }
+        
+        elif doc_type == "Mortgage Documents":
+            return {
+                **base_content,
+                "mortgage_type": "Conventional",
+                "account_number": "MORT-67890",
+                "original_loan_amount": 300000.00,
+                "current_balance": 280000.00,
+                "monthly_payment": 1800.00,
+                "interest_rate": 3.75,
+                "loan_origination_date": "2022-06-01",
+                "lender_name": "Veterans United",
+                "property_address": request["requestor"]["address"],
+                "pre_service_mortgage": True,
+                "scra_eligible": True
+            }
+        
+        elif doc_type == "Bank Statements":
+            return {
+                **base_content,
+                "bank_name": "USAA Bank",
+                "account_type": "Checking",
+                "account_number": "****1234",
+                "statement_period": "2024-12-01 to 2024-12-31",
+                "opening_balance": 2500.00,
+                "closing_balance": 1800.00,
+                "overdraft_fees": 35.00,
+                "fee_dates": ["2024-12-15", "2024-12-22"],
+                "deployment_related_fees": True,
+                "fee_occurrence_days": 7
+            }
+        
+        elif doc_type == "Credit Statements":
+            return {
+                **base_content,
+                "credit_card_type": "Visa",
+                "account_number": "****5678",
+                "current_balance": 5000.00,
+                "credit_limit": 10000.00,
+                "current_apr": 18.99,
+                "account_opening_date": "2021-03-15",
+                "issuer_name": "Chase Bank",
+                "pre_service_account": True,
+                "scra_eligible": True,
+                "payment_history": "Good"
+            }
+        
+        elif doc_type == "Account History":
+            return {
+                **base_content,
+                "account_type": "Credit Card",
+                "account_number": "****5678",
+                "opening_date": "2021-03-15",
+                "pre_service_balance": 2000.00,
+                "pre_service_apr": 18.99,
+                "current_balance": 5000.00,
+                "current_apr": 18.99,
+                "payment_history": "Good",
+                "scra_application_date": "2024-12-30"
             }
         
         else:
             return {
                 **base_content,
                 "content_type": doc_type,
-                "status": "verified"
+                "status": "verified",
+                "document_verified": True,
+                "processing_notes": f"Standard processing completed for {doc_type}"
             }
     
     # Create a lookup from the mock data with case insensitive keys
@@ -151,8 +268,8 @@ def get_document(request_id: str, document_id: str) -> str:
     })
 
 
-def create_document_processing_agent(mock_data: Dict[str, Any], model_client):
-    """Create the Document Processing Agent with tools."""
+def create_document_processing_agent(model_client):
+    """Create the Document Processing Agent with tools and structured output."""
     
     tools = [
         FunctionTool(
@@ -162,58 +279,193 @@ def create_document_processing_agent(mock_data: Dict[str, Any], model_client):
         )
     ]
     
+    # Create a model client with structured output for document processing results
+    from autogen_ext.models.openai import OpenAIChatCompletionClient
+    structured_model_client = OpenAIChatCompletionClient(
+        model="gpt-4o-mini",
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": "document_processing_response",
+                "strict": True,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "documents_processed": {
+                            "type": "array",
+                            "description": "List of processed documents with their content and analysis",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "document_id": {
+                                        "type": "string",
+                                        "description": "The document ID that was processed"
+                                    },
+                                    "document_type": {
+                                        "type": "string",
+                                        "description": "Type of document (e.g., Orders Document, Proof of Military Service, Loan Statement, etc.)"
+                                    },
+                                    "content": {
+                                        "type": "object",
+                                        "description": "The actual document content retrieved from the system with detailed fields based on document type",
+                                        "properties": {
+                                            "document_id": {"type": "string"},
+                                            "file_path": {"type": "string"},
+                                            "processed_date": {"type": "string"}
+                                        },
+                                        "required": ["document_id", "file_path", "processed_date"],
+                                        "additionalProperties": False
+                                    },
+                                    "key_information": {
+                                        "type": "array",
+                                        "description": "Key information extracted from the document for eligibility assessment",
+                                        "items": {"type": "string"}
+                                    },
+                                    "eligibility_relevance": {
+                                        "type": "string",
+                                        "description": "How this document supports or challenges eligibility"
+                                    },
+                                    "verification_status": {
+                                        "type": "string",
+                                        "description": "Document verification status",
+                                        "enum": ["complete", "incomplete", "requires_additional_info"]
+                                    }
+                                },
+                                "required": ["document_id", "document_type", "content", "key_information", "eligibility_relevance", "verification_status"],
+                                "additionalProperties": False
+                            }
+                        },
+                        "summary": {
+                            "type": "object",
+                            "description": "Overall summary of document processing results",
+                            "properties": {
+                                "total_documents": {
+                                    "type": "integer",
+                                    "description": "Total number of documents processed"
+                                },
+                                "supporting_evidence": {
+                                    "type": "array",
+                                    "description": "Key findings that support benefit eligibility",
+                                    "items": {"type": "string"}
+                                },
+                                "potential_concerns": {
+                                    "type": "array",
+                                    "description": "Any issues, gaps, or discrepancies identified",
+                                    "items": {"type": "string"}
+                                },
+                                "missing_information": {
+                                    "type": "array",
+                                    "description": "Required documents or data not yet provided",
+                                    "items": {"type": "string"}
+                                },
+                                "recommendation": {
+                                    "type": "string",
+                                    "description": "Overall recommendation based on document processing",
+                                    "enum": ["ready_for_decision", "need_additional_documents", "requires_manual_review"]
+                                }
+                            },
+                            "required": ["total_documents", "supporting_evidence", "potential_concerns", "missing_information", "recommendation"],
+                            "additionalProperties": False
+                        }
+                    },
+                    "required": ["documents_processed", "summary"],
+                    "additionalProperties": False
+                }
+            }
+        }
+    )
+    
     system_message = """You are the Document Processing Agent responsible for retrieving and processing documents needed for benefit eligibility decisions.
 
-**PRIMARY OBJECTIVE:** Retrieve requested documents and provide structured summaries for eligibility assessment.
+**PRIMARY OBJECTIVE:** Retrieve requested documents by ID and provide structured output with document content for eligibility assessment.
 
 **DOCUMENT PROCESSING WORKFLOW:**
 
-1. **Document Retrieval**: Use get_document tool with provided document IDs
+1. **Document Retrieval**: Use get_document tool with provided document IDs (ONLY search by document ID)
 2. **Content Analysis**: Review document content for relevant eligibility information
 3. **Information Extraction**: Extract key data points needed for benefit decisions
-4. **Structured Summary**: Provide organized summary for decision-making
+4. **Structured Output**: Provide JSON response with document content and analysis
 
 **DOCUMENT TYPES AND KEY INFORMATION:**
 
-**Military Orders (DD-1)**
-- Service member name and rank
-- Duty assignment locations
-- Effective dates (start/end)
-- Type of orders (PCS, deployment, training)
-- Special circumstances or restrictions
+**Orders Document**
+- Orders type (PCS, deployment, training)
+- Effective dates and report dates
+- From/to locations
+- Service member name, rank, and branch
+- Orders number and authorization
+- Duration in days
+- Deployment type classification
 
-**Financial Statements**
-- Account balances and transaction history
-- Income verification
-- Debt obligations and payment history
-- Financial hardship indicators
-- Military pay documentation (LES)
-
-**DD-214 (Discharge Papers)**
-- Service dates and duration
-- Discharge type (honorable, general, etc.)
-- Military occupation and training
-- Service-connected disabilities
+**Proof of Military Service**
+- Service verification status
+- Active duty status and branch
+- Rank and military occupation
+- Service start/end dates and duration
+- Discharge type (for veterans)
 - Combat service indicators
+- Service-connected disabilities
 
-**Loan/Credit Documents**
-- Account numbers and current balances
-- Interest rates and terms
-- Payment history and current status
-- Origination dates relative to military service
-- Lender contact information
+**Leave and Earnings Statement (LES)**
+- Pay period and compensation details
+- Base pay, allowances, and deductions
+- Net pay and total compensation
+- Deployment allowances and special pay
+- Service member identification
 
-**Marriage/Family Documents**
-- Marriage certificate with dates
-- Dependent information
-- Family member military status
-- Legal name changes
+**Proof of Residence**
+- Address verification status
+- Lease details and monthly rent
+- Residency duration
+- Military housing status
+- PCS impact assessment
 
-**Address/Residency Proof**
-- Current and previous addresses
-- Residency verification
-- Utility bills and lease agreements
-- Military housing assignments
+**Loan Statement**
+- Loan type and account details
+- Original and current balances
+- Monthly payment and interest rate
+- Loan origination date
+- Lender information
+- Deferment eligibility
+- Pre-service account status
+
+**Financial Hardship Documentation**
+- Hardship type and duration
+- Monthly income vs expenses
+- Deficit amount calculation
+- Service connection verification
+- Documentation provided
+- Verification status
+
+**Mortgage Documents**
+- Mortgage type and account details
+- Original loan amount and current balance
+- Monthly payment and interest rate
+- Property address
+- Pre-service mortgage status
+- SCRA eligibility
+
+**Bank Statements**
+- Bank name and account type
+- Statement period and balances
+- Overdraft fees and dates
+- Deployment-related fee assessment
+- Fee occurrence tracking
+
+**Credit Statements**
+- Credit card type and account details
+- Current balance and credit limit
+- APR and account opening date
+- Issuer information
+- Pre-service account status
+- SCRA eligibility
+- Payment history
+
+**Account History**
+- Account type and opening date
+- Pre-service vs current balances
+- APR changes and payment history
+- SCRA application tracking
 
 **PROCESSING STANDARDS:**
 
@@ -256,17 +508,20 @@ def create_document_processing_agent(mock_data: Dict[str, Any], model_client):
 ```
 
 **CRITICAL INSTRUCTIONS:**
+- **ONLY search by document ID** - use the get_document tool with provided document IDs
 - Process ALL requested document IDs
-- Extract specific, actionable information
+- **Use the document content from the tool response** - the tool already provides the content
+- Extract specific, actionable information from the document content
 - Note both supporting and contradicting evidence
 - Flag incomplete or suspicious documents
-- Provide clear, structured summaries for decision-makers
-- Do not make eligibility decisions - only process and summarize documents"""
+- **Provide structured JSON output** with analysis and summary
+- Do not make eligibility decisions - only process and summarize documents
+- **The tool provides content, you provide analysis**"""
     
     return AssistantAgent(
         name="Document_Processing_agent",
         description="Retrieves and processes documents required for benefit decisions",
-        model_client=model_client,
+        model_client=structured_model_client,
         model_context=UnboundedChatCompletionContext(),
         tools=tools,
         system_message=system_message,

@@ -151,7 +151,7 @@ def customer_search(ssn: str = "", name: str = "", address: str = "") -> str:
     return json.dumps(response, indent=2) 
 
 
-def create_customer_verification_agent(mock_data: Dict[str, Any], model_client):
+def create_customer_verification_agent(model_client):
     """Create the Customer Verification Agent with tools and structured output."""
     
     tools = [

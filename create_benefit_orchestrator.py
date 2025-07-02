@@ -26,41 +26,12 @@ from agents.judge_agent import create_judge_agent
 from agents.user_proxy_agent import create_user_proxy_agent
 
 
-def load_mock_data(mock_data_dir: str = "mock-data") -> Dict[str, Any]:
-    """Load mock data from JSON files."""
-    mock_data = {}
-    
-    try:
-        # Load customers
-        with open(os.path.join(mock_data_dir, "customers.json"), 'r', encoding='utf-8') as f:
-            mock_data['customers'] = json.load(f)
-        
-        # Load documents
-        with open(os.path.join(mock_data_dir, "documents.json"), 'r', encoding='utf-8') as f:
-            mock_data['documents'] = json.load(f)
-        
-        # Load requests
-        with open(os.path.join(mock_data_dir, "requests.json"), 'r', encoding='utf-8') as f:
-            mock_data['requests'] = json.load(f)
-        
-        print(f"  - Loaded {len(mock_data.get('customers', []))} customers")
-        print(f"  - Loaded {len(mock_data.get('documents', []))} documents")
-        print(f"  - Loaded {len(mock_data.get('requests', []))} requests")
-        
-    except FileNotFoundError as e:
-        print(f"Warning: Could not load mock data file: {e}")
-        print("Continuing with empty mock data...")
-    
-    return mock_data
-
 
 def create_benefit_orchestrator_team():
     """Create the complete benefit orchestrator team."""
     
     print("=== Benefit Orchestrator Team Creation ===\n")
     
-    print("Loading mock data...")
-    mock_data = load_mock_data()
     
     print("Creating model client...")
     
@@ -77,9 +48,9 @@ def create_benefit_orchestrator_team():
     print("Creating agents...")
     
     # Create all agents using the modular approach
-    customer_verification_agent = create_customer_verification_agent(mock_data, model_client)
-    document_processing_agent = create_document_processing_agent(mock_data, model_client)
-    orchestrator_agent = create_orchestrator_agent(mock_data, model_client)
+    customer_verification_agent = create_customer_verification_agent(model_client)
+    document_processing_agent = create_document_processing_agent(model_client)
+    orchestrator_agent = create_orchestrator_agent(model_client)
     eligibility_decision_agent = create_eligibility_decision_agent(model_client)
     benefit_execution_agent = create_benefit_execution_agent(model_client)
     judge_agent = create_judge_agent(model_client)
