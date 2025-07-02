@@ -2,6 +2,8 @@
 
 This project demonstrates a sophisticated multi-agent workflow for a mock SCRA (Servicemembers Civil Relief Act) benefit processing system. It showcases the power and flexibility of using structured prompts to coordinate specialized agents, serving as an advanced playground for exploring agent orchestration, workflow automation, and decision-making in a semi-realistic military benefit processing scenario using AutoGen Studio.
 
+![Demo](Demo.gif)
+
 ## Requirements
 
 - Python 3.10+
@@ -52,6 +54,44 @@ AutoGen Studio limitations - all
 complex workflow decisions are 
 handled by the Orchestrator Agent.
 - **Verification, Document, Eligibility, Judge, Execution Agents**: Each agent handles a specific domain—customer verification, document retrieval/analysis, eligibility decision, quality/judgment, and benefit execution. Agents communicate via structured messages and are coordinated by the Orchestrator.
+
+## Lessons Learned
+
+### Multi-Agent System Design Pitfalls
+
+During testing, we discovered a critical challenge in LLM-based multi-agent system design: **agents can create convincing illusions of competence while harboring fundamental logical flaws**. Unlike traditional programming where errors are immediately apparent, these systems can produce confident, well-structured responses that mask underlying inconsistencies.
+
+**Key Findings:**
+- **The Confidence Trap**: LLM agents can produce plausible but logically inconsistent decisions
+- **Ambiguous Rules Amplify Inconsistency**: Vague criteria allow multiple valid interpretations
+- **Information Gaps Are Masked**: Agents fill gaps with assumptions rather than exposing missing information
+
+For detailed analyses of these issues, see our:
+- [Eligibility Decision Inconsistency Analysis Report](eligibility_decision_analysis_report.md) - Real-world example of LLM inconsistency
+- [Natural Language vs Tools Analysis](natural_language_vs_tools_analysis.md) - Critical analysis of workflow orchestration approaches
+
+### Prompt Design Lessons
+
+**AutoGen Studio Specific:**
+- **{history} parameter only works for selector agents/orchestrators**, NOT for individual agent system messages
+- **Individual agents must access conversation history** through the messages parameter in their reply functions
+- **AutoGen agents with tools can get stuck in repetitive loops** if system messages don't explicitly prohibit duplicate calls
+- **Context window size matters** - agents need sufficient context to see their own previous actions
+
+**Structured Output:**
+- **Structured output provides maximum reliability** for critical decision-making agents
+- **OpenAI's internal JSON schema validation ensures consistent response formats** and prevents malformed outputs
+
+**Agent Communication:**
+- **Natural language vs tools trade-offs** - see our detailed analysis in [Natural Language vs Tools Analysis](natural_language_vs_tools_analysis.md)
+- **Explicit anti-loop rules** are essential when agents have access to tools
+- **Simple approaches often work better** than complex workarounds
+
+**System Architecture:**
+- **HeadAndTailChatCompletionContext** provides smart history management for orchestrators
+- **Bulletproof selector prompts** with step-by-step instructions prevent routing confusion
+- **Cross-agent validation** is critical for detecting logical inconsistencies
+
 
 ## 📄 License
 
