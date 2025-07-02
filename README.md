@@ -57,20 +57,17 @@ handled by the Orchestrator Agent.
 
 ## Lessons Learned
 
-### Multi-Agent System Design Pitfalls
+###  Ambigous Rule Causing Inconsistent Decision
 
-During testing, we discovered a critical challenge in LLM-based multi-agent system design: **agents can create convincing illusions of competence while harboring fundamental logical flaws**. Unlike traditional programming where errors are immediately apparent, these systems can produce confident, well-structured responses that mask underlying inconsistencies.
+During testing, I discovered a critical challenge in LLM-based system: Unlike traditional programming where errors are immediately apparent, these systems can produce confident, well-structured responses that mask underlying inconsistencies:
+- [Eligibility Decision Inconsistency Analysis Report](eligibility_decision_analysis_report.md) 
 
-**Key Findings:**
-- **The Confidence Trap**: LLM agents can produce plausible but logically inconsistent decisions
-- **Ambiguous Rules Amplify Inconsistency**: Vague criteria allow multiple valid interpretations
-- **Information Gaps Are Masked**: Agents fill gaps with assumptions rather than exposing missing information
+### Delegate Decsion to LLM?
+When designing LLM-based multi-agent systems, a critical question arises: should complex decision logic be delegated to LLM reasoning or implemented as explicit tools? See below page for a very good example of assigning patents to emergency room, and it also proposed a hybrid approach - using tool to handle critical work and LLM for other.
 
-For detailed analyses of these issues, see our:
-- [Eligibility Decision Inconsistency Analysis Report](eligibility_decision_analysis_report.md) - Real-world example of LLM inconsistency
-- [Natural Language vs Tools Analysis](natural_language_vs_tools_analysis.md) - Critical analysis of workflow orchestration approaches
+- [Natural Language vs Tools Analysis](natural_language_vs_tools_analysis.md) 
 
-### Prompt Design Lessons
+### More Lessons Leanred
 
 **AutoGen Studio Specific:**
 - **{history} parameter only works for selector agents/orchestrators**, NOT for individual agent system messages
@@ -81,16 +78,6 @@ For detailed analyses of these issues, see our:
 **Structured Output:**
 - **Structured output provides maximum reliability** for critical decision-making agents
 - **OpenAI's internal JSON schema validation ensures consistent response formats** and prevents malformed outputs
-
-**Agent Communication:**
-- **Natural language vs tools trade-offs** - see our detailed analysis in [Natural Language vs Tools Analysis](natural_language_vs_tools_analysis.md)
-- **Explicit anti-loop rules** are essential when agents have access to tools
-- **Simple approaches often work better** than complex workarounds
-
-**System Architecture:**
-- **HeadAndTailChatCompletionContext** provides smart history management for orchestrators
-- **Bulletproof selector prompts** with step-by-step instructions prevent routing confusion
-- **Cross-agent validation** is critical for detecting logical inconsistencies
 
 
 ## 📄 License
